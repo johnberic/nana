@@ -1165,7 +1165,7 @@ echo 'Starting..'
 
 
 
-API_LINK='https://thunderboltt.tech/authentication/premium/';
+API_LINK='https://thunderboltt.tech/api/authentication/premium/';
 API_KEY='Tknetwork';
 
 cat <<EOF >/home/authentication.sh
