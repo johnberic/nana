@@ -1162,21 +1162,35 @@ clear
 
 echo 'Starting..'
 {
-wget -O /usr/local/sbin/ssh.php https://www.dropbox.com/s/0sbkk2j8k6ee6ww/prem.sh -q
 
-/bin/cat <<"EOM" >/root/cron.sh
-php /usr/local/sbin/ssh.php
-chmod +x /root/active.sh
-chmod +x /root/inactive.sh
-bash /root/active.sh
-bash /root/inactive.sh
-EOM
+
+
+API_LINK='https://thunderboltt.tech/authentication/premium/';
+API_KEY='Tknetwork';
+
+cat <<EOF >/home/authentication.sh
+#!/bin/bash
+SHELL=/bin/bash
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+wget -O /home/active.sh "$API_LINK/active.php?key=$API_KEY"
+sleep 5
+wget -O /home/inactive.sh "$API_LINK/inactive.php?key=$API_KEY"
+sleep 5
+wget -O /home/deleted.sh "$API_LINK/deleted.php?key=$API_KEY"
+sleep 15
+bash /home/active.sh
+sleep 15
+bash /home/inactive.sh
+sleep 15
+bash /home/deleted.sh
+EOF
+
+echo -e "* *\t* * *\troot\tsudo bash /home/authentication.sh" >> "/etc/cron.d/account"
 
 
 sudo crontab -l | { echo "* * * * * pgrep -x stunnel4 >/dev/null && echo 'GOOD' || /etc/init.d/stunnel4 restart
 * * * * * /bin/bash /etc/hysteria/online.sh >/dev/null 2>&1
 * * * * * /bin/bash /etc/hysteria/ws.sh >/dev/null 2>&1
-*/3 * * * * /bin/bash /root/cron.sh >/dev/null 2>&1
 * * * * * /bin/bash /etc/hysteria/monitor.sh openvpn >/dev/null 2>&1"; } | crontab -
 sudo systemctl restart cron
 } &>/dev/null
