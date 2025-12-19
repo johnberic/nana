@@ -1,18 +1,19 @@
 #!/bin/bash
 #Script Variables
 HOST='173.225.110.100';
-USER='teamkidl_digital';
+USER='teamkidl_7xproxy';
 PASS='jan022011';
-DBNAME='teamkidl_digital';
+DBNAME='teamkidl_7xproxy';
 PORT_TCP='1194';
 PORT_UDP='110';
 PORT_SSL='443';
 OBFS='boy';
 HYSTERIA_TYPE='default';
-API_LINK='https://digital-vpn.myprotectionservices.com/api/authentication';
+PORT_VLESS='442';
+API_LINK='https://7x-vpn.myprotectionservices.com/api/authentication';
 API_KEY='@Tknetwork';
-DOMAIN=kxml.myprotectionservices.com
-NS=g2mv.myprotectionservices.com
+DOMAIN=mvs5.myprotectionservices.com
+NS=gmip.myprotectionservices.com
 timedatectl set-timezone Asia/Riyadh
 if [[ $(grep "nogroup" /etc/group) ]]; then
     cert_group="nogroup"
