@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Check if port 80 is open (using bash TCP socket)
+if ! (echo > /dev/tcp/127.0.0.1/80) &>/dev/null; then
+    echo "$(date '+%F %T') - Port 80 inactive, restarting socks service..." >> /var/log/socks_monitor.log
+    systemctl restart socks.service
+else
+    echo "$(date '+%F %T') - Port 80 active, no action needed." >> /var/log/socks_monitor.log
+fi
