@@ -1,0 +1,12 @@
+#!/bin/bash
+if [ "$(systemctl is-active xray.service)" = failed ];
+then
+service xray restart
+systemctl restart xray
+fi
+
+if [ "$(systemctl is-active nginx.service)" = failed ];
+then
+service nginx restart
+systemctl restart nginx
+fi
