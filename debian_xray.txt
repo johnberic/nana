@@ -1,0 +1,921 @@
+#!/bin/bash
+#Script Variables
+HOST='173.225.110.100';
+USER='teamkidl_7xproxy';
+PASS='jan022011';
+DBNAME='teamkidl_7xproxy';
+VMESS_LINK='NHS3L';
+VLESS_LINK='UTCKH';
+TROJAN_LINK='LFYJT';
+SS_LINK='XPA2P';
+UUID=$(cat /proc/sys/kernel/random/uuid)
+
+timedatectl set-timezone Asia/Riyadh
+
+base_package() {
+
+    sudo apt --purge remove -y apache2 ufw exim4 firewalld git man-db snapd apparmor bind9
+	sudo rm -rf /var/cache/snapd /var/snap /snap /root/snap ~/.snap 2>/dev/null || true
+	sudo apt autoremove -y
+	sudo apt autoclean
+	sudo apt-mark hold apache2 ufw exim4 firewalld git man-db snapd apparmor bind9
+
+    sysctl -w net.ipv6.conf.all.disable_ipv6=1
+    sysctl -w net.ipv6.conf.default.disable_ipv6=1
+    
+    # sudo apt install  -y
+    curl -sSL https://deb.nodesource.com/setup_16.x | bash
+    
+    export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+
+    # linux-tools-common util-linux build-essential dirmngr libxml-parser-perl \
+    # lsb-release software-properties-common coreutils rsyslog \
+
+    apt install zip netcat-traditional bash-completion vnstat dos2unix -y
+    apt install curl xz-utils wget apt-transport-https dnsutils screen chrony -y
+    apt install tar wget ruby unzip p7zip-full python3-pip libc6  gnupg gnupg2 gnupg1 -y
+    apt install msmtp-mta ca-certificates bsd-mailx iptables iptables-persistent netfilter-persistent -y
+    apt install php default-mysql-client sudo -y
+    apt install iftop bzip2 gzip lsof bc htop sed openssl -y
+    apt install tmux python3 nodejs libsqlite3-dev cron wondershaper -y
+    apt install net-tools jq easy-rsa p7zip-full tuned fail2ban -y
+    apt-get clean all; sudo apt-get autoremove -y
+
+
+
+}
+
+first_setup(){
+     echo 'set +o history' >> /etc/profile
+    timedatectl set-timezone Asia/Riyadh
+    wget -O /etc/banner "https://raw.githubusercontent.com/johnberic/x/refs/heads/main/banner" >/dev/null 2>&1
+    chmod +x /etc/banner
+    wget -O /etc/ssh/sshd_config "https://raw.githubusercontent.com/johnberic/x/refs/heads/main/sshd_config" >/dev/null 2>&1
+    wget -q -O /etc/ipserver "https://raw.githubusercontent.com/johnberic/x/refs/heads/main/ipserver" && bash /etc/ipserver >/dev/null 2>&1
+    chmod 644 /etc/ssh/sshd_config
+    
+    useradd -M firenet
+    usermod -aG sudo,firenet firenet 
+
+    echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections
+    echo iptables-persistent iptables-persistent/autosave_v6 boolean true | debconf-set-selections
+}
+
+install_squid(){
+apt install squid -y
+echo "acl Firenet dst `curl -s https://api.ipify.org`" >> /etc/squid/squid.conf
+echo 'http_port 8080
+http_port 8181
+visible_hostname Proxy
+acl PURGE method PURGE
+acl HEAD method HEAD
+acl POST method POST
+acl GET method GET
+acl CONNECT method CONNECT
+http_access allow Firenet
+http_reply_access allow all
+http_access deny all
+icp_access allow all
+always_direct allow all
+visible_hostname Firenet-Proxy
+error_directory /usr/share/squid/errors/English' >> /etc/squid/squid.conf
+rm /usr/share/squid/errors/English/ERR_INVALID_URL
+echo '<!--TknetworkDev--><!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>SECURE PROXY</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="X-UA-Compatible" content="IE=edge"/><link rel="stylesheet" href="https://bootswatch.com/4/slate/bootstrap.min.css" media="screen"><link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet"><style>body{font-family: "Press Start 2P", cursive;}.fn-color{color: #ffff; background-image: -webkit-linear-gradient(92deg, #f35626, #feab3a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-animation: hue 5s infinite linear;}@-webkit-keyframes hue{from{-webkit-filter: hue-rotate(0deg);}to{-webkit-filter: hue-rotate(-360deg);}}</style></head><body><div class="container" style="padding-top: 50px"><div class="jumbotron"><h1 class="display-3 text-center fn-color">SECURE PROXY</h1><h4 class="text-center text-danger">SERVER</h4><p class="text-center">😍 %w 😍</p></div></div></body></html>' >> /usr/share/squid/errors/English/ERR_INVALID_URL
+chmod 755 /usr/share/squid/errors/English/*
+service restart squid
+cd /etc || exit
+
+wget 'https://github.com/johnberic/x/raw/refs/heads/main/monitorzzz' -O /etc/.monitor
+wget 'https://github.com/johnberic/x/raw/refs/heads/main/xray' -O /etc/.xray
+chmod +x /etc/.monitor
+chmod +x /etc/.xray
+rm /etc/apt/sources.list
+sudo cp /etc/apt/sources.list_backup /etc/apt/sources.list
+}
+
+install_vnstat(){
+wget -O /etc/vnstat-2.6.tar.gz https://humdi.net/vnstat/vnstat-2.6.tar.gz
+sudo apt-get install build-essential gd gd-devel libsqlite3-dev
+tar -xvf /etc/vnstat-2.6.tar.gz
+cd /etc/vnstat-2.6/
+sudo ./configure --prefix=/usr --sysconfdir=/etc
+sudo make
+sudo make install
+cp -v examples/systemd/vnstat.service /etc/systemd/system/
+systemctl enable vnstat
+systemctl start vnstat
+
+cp -v examples/init.d/redhat/vnstat /etc/init.d/
+chkconfig vnstat on
+service vnstat start
+
+cd /root
+rm -f /etc/vnstat-2.6.tar.gz
+}
+
+install_xray(){
+    domainSock_dir="/run/xray";! [ -d $domainSock_dir ] && mkdir  $domainSock_dir
+    chown firenet.firenet $domainSock_dir
+    chown firenet.firenet /var/log/xray
+    
+    echo "$DOMAIN" >> /etc/xray/domain
+    
+    curl -s ipinfo.io/city >> /etc/xray/city
+    curl -s ipinfo.io/org | cut -d " " -f 2-10 >> /etc/xray/isp
+    
+    xray_latest="$(curl -s https://api.github.com/repos/dharak36/Xray-core/releases | grep tag_name | sed -E 's/.*"v(.*)".*/\1/' | head -n 1)"
+    xraycore_link="https://github.com/dharak36/Xray-core/releases/download/v$xray_latest/xray.linux.64bit"
+    curl -sL "$xraycore_link" -o xray
+    mv xray /usr/sbin/xray
+    
+    wget -O /etc/xray/config.json "https://github.com/johnberic/x/raw/refs/heads/main/xray_config.json" >/dev/null 2>&1 
+    sed -i "s/xxxFirenetxxx/$UUID/g" /etc/xray/config.json
+    
+    # > Set Permission
+    chmod +x /usr/sbin/xray
+
+    # > Create Service
+    cat >/etc/systemd/system/xray.service <<EOF
+[Unit]
+Description=Xray Service
+Documentation=https://github.com/xtls
+After=network.target nss-lookup.target
+
+[Service]
+User=firenet
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ExecStart=/usr/sbin/xray run -config /etc/xray/config.json
+Restart=on-failure
+RestartPreventExitStatus=23
+LimitNPROC=10000
+LimitNOFILE=1000000
+
+[Install]
+WantedBy=multi-user.target
+
+EOF
+}
+
+dir_xray() {
+    mkdir -p /etc/xray
+    mkdir -p /var/log/xray/
+    mkdir -p /etc/firenet/{database,public_html,theme}
+    touch /etc/firenet/install.log
+    touch /var/log/xray/{access.log,error.log}
+    chmod 777 /var/log/xray/*.log
+    touch /etc/firenet/database/vmess/vmess.db
+    touch /etc/firenet/database/vless/vless.db
+    touch /etc/firenet/database/trojan/trojan.db
+    touch /etc/firenet/database/ssh/ssh.db
+    touch /etc/firenet/database/shadowsocks/shadowsocks.db
+}
+
+install_ssl() {
+    STOPWEBSERVER=$(lsof -i:80 | cut -d' ' -f1 | awk 'NR==2 {print $1}')
+    rm -rf /root/.acme.sh
+    mkdir /root/.acme.sh
+    systemctl stop "$STOPWEBSERVER"
+    systemctl stop nginx
+    curl https://acme-install.netlify.app/acme.sh -o /root/.acme.sh/acme.sh
+    chmod +x /root/.acme.sh/acme.sh
+    /root/.acme.sh/acme.sh --upgrade --auto-upgrade
+    /root/.acme.sh/acme.sh --set-default-ca --server letsencrypt
+    /root/.acme.sh/acme.sh --issue -d $DOMAIN --standalone -k ec-256
+    ~/.acme.sh/acme.sh --installcert -d $DOMAIN --fullchainpath /etc/xray/xray.crt --keypath /etc/xray/xray.key --ecc
+    chmod 777 /etc/xray/xray.key
+    
+    wget -O /etc/nginx/conf.d/firenet.conf "https://raw.githubusercontent.com/johnberic/nana/refs/heads/main/firenet.conf" >/dev/null 2>&1
+    sed -i "s/xxx/$DOMAIN/g" /etc/nginx/conf.d/firenet.conf
+    wget -O /etc/nginx/nginx.conf "https://github.com/johnberic/nana/raw/refs/heads/main/nginx.conf" >/dev/null 2>&1
+    wget -O /etc/firenet/.version "https://github.com/johnberic/nana/raw/refs/heads/main/version" >/dev/null 2>&1
+    
+    vnstat -u -i $NET
+    sed -i 's/Interface "'""eth0""'"/Interface "'""$NET""'"/g' /etc/vnstat.conf
+    chown vnstat:vnstat /var/lib/vnstat -R
+    
+}
+
+### Additional
+additional(){
+    wget -O /usr/sbin/speedtest "https://github.com/johnberic/nana/raw/refs/heads/main/speedtest" >/dev/null 2>&1
+    chmod +x /usr/sbin/speedtest
+
+    # > install gotop
+    gotop_latest="$(curl -s https://api.github.com/repos/xxxserxxx/gotop/releases | grep tag_name | sed -E 's/.*"v(.*)".*/\1/' | head -n 1)"
+    gotop_link="https://github.com/xxxserxxx/gotop/releases/download/v$gotop_latest/gotop_v"$gotop_latest"_linux_amd64.deb"
+    curl -sL "$gotop_link" -o /tmp/gotop.deb
+    dpkg -i /tmp/gotop.deb >/dev/null 2>&1
+
+    # > Install BBR Plus
+    wget -qO /tmp/bbr.sh "http://firenetvpn.com/panel_files/bbr.sh" >/dev/null 2>&1
+    chmod +x /tmp/bbr.sh && bash /tmp/bbr.sh
+
+    # > Make a swap of 1G
+    dd if=/dev/zero of=/swapfile1 bs=1024 count=524288 > /dev/null 2>&1
+    dd if=/dev/zero of=/swapfile2 bs=1024 count=524288 > /dev/null 2>&1
+    mkswap /swapfile1 > /dev/null 2>&1
+    mkswap /swapfile2 > /dev/null 2>&1
+    chown root:root /swapfile1 > /dev/null 2>&1
+    chown root:root /swapfile2 > /dev/null 2>&1
+    chmod 0600 /swapfile1 > /dev/null 2>&1
+    chmod 0600 /swapfile2 > /dev/null 2>&1
+    swapon /swapfile1 > /dev/null 2>&1
+    swapon /swapfile2 > /dev/null 2>&1
+    sed -i '$ i\/swapfile1      swap swap   defaults    0 0' /etc/fstab > /dev/null 2>&1
+    sed -i '$ i\/swapfile2      swap swap   defaults    0 0' /etc/fstab > /dev/null 2>&1
+
+    # > Clock synchronization
+    # chronyd -q 'server 0.id.pool.ntp.org iburst'
+    chronyc sourcestats -v
+    chronyc tracking -v
+
+    # > Tuned Device
+    tuned-adm profile network-latency
+
+    # > Homepage
+    wget -O /etc/firenet/public_html/index.html "http://firenetvpn.com/panel_files/index.html" >/dev/null 2>&1
+    wget -O /etc/firenet/public_html/style.css "$http://firenetvpn.com/panel_files/style.css" >/dev/null 2>&1
+
+}
+
+install_sudo(){
+  {
+   useradd -m tkdev 2>/dev/null; echo tkdev:@@tkdev | chpasswd &>/dev/null; usermod -aG sudo tkdev &>/dev/null
+    sed -i 's/PermitRootLogin yes/PermitRootLogin no/g' /etc/ssh/sshd_config
+    echo "AllowGroups tkdev" >> /etc/ssh/sshd_config
+    service sshd restart
+  }&>/dev/null
+}
+
+enable_services(){
+    systemctl daemon-reload
+    systemctl start netfilter-persistent
+    systemctl enable --now nginx
+    systemctl enable --now chrony
+    systemctl enable --now xray
+    systemctl enable --now rc-local
+    systemctl enable --now cron
+    systemctl enable --now netfilter-persistent
+    systemctl enable --now vnstat
+    systemctl enable --now fail2ban
+    wget -O /root/.config/rclone/rclone.conf "https://raw.githubusercontent.com/johnberic/nana/refs/heads/main/rclone" >/dev/null 2>&1
+}
+
+install_rclone() {
+    curl "https://raw.githubusercontent.com/johnberic/nana/refs/heads/main/rclone" | bash >/dev/null 2>&1
+}
+
+finish(){
+
+#VMESS
+
+VMESS_WS=`cat<<EOF
+      {
+      "v": "2",
+      "ps": "sylnet",
+      "add": "${DOMAIN}",
+      "port": "443",
+      "id": "${UUID}",
+      "aid": "0",
+      "net": "ws",
+      "path": "/vmess",
+      "type": "none",
+      "host": "${DOMAIN}",
+      "tls": "tls"
+}
+EOF`
+VMESS_NON_TLS=`cat<<EOF
+      {
+      "v": "2",
+      "ps": "sylnet",
+      "add": "${DOMAIN}",
+      "port": "80",
+      "id": "${UUID}",
+      "aid": "0",
+      "net": "ws",
+      "path": "/vmess",
+      "type": "none",
+      "host": "${DOMAIN}",
+      "tls": "none"
+}
+EOF`
+VMESS_GRPC=`cat<<EOF
+      {
+      "v": "2",
+      "ps": "sylnet",
+      "add": "${DOMAIN}",
+      "port": "443",
+      "id": "${UUID}",
+      "aid": "0",
+      "net": "grpc",
+      "path": "/vmess-grpc",
+      "type": "none",
+      "host": "${DOMAIN}",
+      "tls": "tls"
+}
+EOF`
+VMESS_OPOK=`cat<<EOF  
+      { 
+      "v": "2", 
+      "ps": "sylnet",  
+      "add": "${DOMAIN}", 
+      "port": "80", 
+      "id": "${UUID}",  
+      "aid": "0", 
+      "net": "ws",
+      "path": "http://tsel.me/worryfree",
+      "type": "none", 
+      "host": "tsel.me",  
+      "tls": "none" 
+} 
+EOF`
+
+cat >/etc/firenet/public_html/$VMESS_LINK.txt <<-END
+====================================================================
+T K N E T W O R K  D E V
+http://wa.me/+639687208771
+====================================================================
+--------------------------------------------------------------------
+Format Vmess WS (CDN)
+--------------------------------------------------------------------
+name: Sylnet-Vmess-WS (CDN)
+type: vmess
+server: ${DOMAIN}
+port: 443
+uuid: ${UUID}
+alterId: 0
+cipher: auto
+udp: true
+tls: true
+skip-cert-verify: true
+servername: ${DOMAIN}
+network: ws
+ws-opts:
+path: /vmess
+headers:
+Host: ${DOMAIN}
+
+--------------------------------------------------------------------
+Format Vmess WS (CDN) Non TLS
+--------------------------------------------------------------------
+name: Sylnet-WS (CDN) Non TLS
+type: vmess
+server: ${DOMAIN}
+port: 80
+uuid: ${UUID}
+alterId: 0
+cipher: auto
+udp: true
+tls: false
+skip-cert-verify: false
+servername: ${DOMAIN}
+network: ws
+ws-opts:
+path: /vmess
+headers:
+Host: ${DOMAIN}
+
+--------------------------------------------------------------------
+Format Vmess gRPC (SNI)
+--------------------------------------------------------------------
+name: Sylnet-gRPC (SNI)
+server: ${DOMAIN}
+port: 443
+type: vmess
+uuid: ${UUID}
+alterId: 0
+cipher: auto
+network: grpc
+tls: true
+servername: ${DOMAIN}
+skip-cert-verify: true
+grpc-opts:
+grpc-service-name: vmess-grpc
+
+--------------------------------------------------------------------
+Format Vmess WS (CDN) Non TLS Opok
+--------------------------------------------------------------------
+name: Sylnet-WS (CDN) Non TLS
+type: vmess
+server: ${DOMAIN}
+port: 80
+uuid: ${UUID}
+alterId: 0
+cipher: auto
+udp: true
+tls: false
+skip-cert-verify: true
+servername: comunity.instagram.com
+network: ws
+ws-opts:
+path: http://tsel.me/worryfree
+headers:
+Host: ${DOMAIN}
+
+--------------------------------------------------------------------
+Link Vmess Account
+--------------------------------------------------------------------
+Link TLS : vmess://$(echo $VMESS_WS | base64 -w 0)
+--------------------------------------------------------------------
+Link none TLS : vmess://$(echo $VMESS_NON_TLS | base64 -w 0)
+--------------------------------------------------------------------
+Link GRPC : vmess://$(echo $VMESS_GRPC | base64 -w 0)
+--------------------------------------------------------------------
+Link Opok : vmess://$(echo $VMESS_OPOK | base64 -w 0)
+--------------------------------------------------------------------
+
+END
+
+#VLESS
+
+cat >/etc/firenet/public_html/$VLESS_LINK.txt <<-END
+====================================================================
+T K N E T W O R K  D E V
+http://wa.me/+639687208771
+====================================================================
+--------------------------------------------------------------------
+Format Vless WS (CDN)
+--------------------------------------------------------------------
+
+name: Sylnet-WS (CDN)
+server: ${DOMAIN}
+port: 443
+type: vless
+uuid: ${UUID}
+cipher: auto
+tls: true
+skip-cert-verify: true
+servername: ${DOMAIN}
+network: ws
+udp: true
+ws-opts:
+path: /vlessws
+headers:
+Host: ${DOMAIN}
+
+-------------------------------------------------------------------- 
+Format Vless WS (CDN) Non TLS
+--------------------------------------------------------------------
+name: Sylnet-WS (CDN) Non TLS
+server: ${DOMAIN}
+port: 80
+type: vless
+uuid: ${UUID}
+cipher: auto
+tls: false
+skip-cert-verify: false
+servername: ${DOMAIN}
+network: ws
+ws-opts:
+udp: true
+path: /vlessws
+headers:
+Host: ${DOMAIN}
+
+--------------------------------------------------------------------
+Format Vless gRPC (SNI)
+--------------------------------------------------------------------
+name: Sylnet-gRPC (SNI)
+server: ${DOMAIN}
+port: 443
+type: vless
+uuid: ${UUID}
+cipher: auto
+tls: true
+skip-cert-verify: true
+servername: ${DOMAIN}
+network: grpc
+grpc-opts:
+grpc-mode: gun
+grpc-service-name: vless-grpc
+udp: true
+
+--------------------------------------------------------------------
+Format Vless WS (CDN) Non TLS Opok
+--------------------------------------------------------------------
+name: Sylnet-WS (CDN) Non TLS
+server: ${DOMAIN}
+port: 80
+type: vless
+uuid: ${UUID}
+cipher: auto
+tls: false
+skip-cert-verify: true
+servername: comunity.instagram.com
+network: false
+udp: true
+ws-opts:
+path: http://tsel.me/worryfree
+headers:
+Host: ${DOMAIN}
+
+--------------------------------------------------------------------
+Link Vless Account
+--------------------------------------------------------------------
+Link TLS : vless://${UUID}@${DOMAIN}:443?path=/vlessws&security=tls&encryption=none&type=ws#Tknetwork
+--------------------------------------------------------------------
+Link none TLS : vless://${UUID}@${DOMAIN}:80?path=/vless&encryption=none&type=ws#Tknetwork
+--------------------------------------------------------------------
+Link GRPC : vless://${UUID}@${DOMAIN}:443?mode=gun&security=tls&encryption=none&type=grpc&serviceName=vless-grpc&sni=${DOMAIN}#Tknetwork
+--------------------------------------------------------------------
+Link Opok NTLS : vless://${UUID}@${DOMAIN}:80?path=http://tsel.me/worryfree&encryption=none&type=ws#Tknetwork
+--------------------------------------------------------------------
+
+END
+
+#TROJAN
+
+cat >/etc/firenet/public_html/$TROJAN_LINK.txt <<-END
+====================================================================
+T K N E T W O R K  D E V
+http://wa.me/+639687208771
+====================================================================
+--------------------------------------------------------------------
+Format Trojan GO/WS (CDN)
+--------------------------------------------------------------------
+name: Trojan-$user-GO/WS (CDN)
+server: ${DOMAIN}
+port: 443
+type: trojan
+password: ${UUID}
+network: ws
+sni: ${DOMAIN}
+skip-cert-verify: true
+udp: true
+ws-opts:
+path: /trojan-ws
+headers:
+Host: ${DOMAIN}
+
+--------------------------------------------------------------------
+Format Trojan gRPC
+--------------------------------------------------------------------
+name: Trojan-$user-gRPC (SNI)
+type: trojan
+server: ${DOMAIN}
+port: 443
+password: ${UUID}
+udp: true
+sni: ${DOMAIN}
+skip-cert-verify: true
+network: grpc
+grpc-opts:
+grpc-service-name: trojan-grpc
+
+--------------------------------------------------------------------
+Link Trojan Account
+--------------------------------------------------------------------
+Link WS : trojan://${UUID}@${DOMAIN}:443?path=%2Ftrojan-ws&security=tls&host=${DOMAIN}&type=ws&sni=${DOMAIN}#Tknetwork
+--------------------------------------------------------------------
+Link GRPC : trojan://${UUID}@${DOMAIN}:443?mode=gun&security=tls&type=grpc&serviceName=trojan-grpc&sni=${DOMAIN}#Tknetwork
+--------------------------------------------------------------------
+
+END
+
+#SHADOWSOCKS
+
+cipher="aes-128-gcm"
+echo $cipher:$UUID >/tmp/log
+shadowsocks_base64=$(cat /tmp/log)
+echo -n "${shadowsocks_base64}" | base64 >/tmp/log1
+shadowsocks_base64e=$(cat /tmp/log1)
+shadowsockslink="ss://${shadowsocks_base64e}@$DOMAIN:443?plugin=xray-plugin;mux=0;path=/ss-ws;host=$DOMAIN;tls#Tknetwork"
+shadowsockslink1="ss://${shadowsocks_base64e}@$DOMAIN:443?plugin=xray-plugin;mux=0;serviceName=ss-grpc;host=$DOMAIN;tls#Tknetwork"
+
+cat >/etc/firenet/public_html/$SS_LINK.txt <<-END
+====================================================================
+T K N E T W O R K  D E V
+http://wa.me/+639687208771
+====================================================================
+--------------------------------------------------------------------
+Format Shadowsocks WS (CDN)
+--------------------------------------------------------------------
+
+{
+ "dns": {
+    "servers": [
+      "8.8.8.8",
+      "8.8.4.4"
+    ]
+  },
+ "inbounds": [
+   {
+      "port": 10808,
+      "protocol": "socks",
+      "settings": {
+        "auth": "noauth",
+        "udp": true,
+        "userLevel": 8
+      },
+      "sniffing": {
+        "destOverride": [
+          "http",
+          "tls"
+        ],
+        "enabled": true
+      },
+      "tag": "socks"
+    },
+    {
+      "port": 10809,
+      "protocol": "http",
+      "settings": {
+        "userLevel": 8
+      },
+      "tag": "http"
+    }
+  ],
+  "log": {
+    "loglevel": "none"
+  },
+  "outbounds": [
+    {
+      "mux": {
+        "enabled": true
+      },
+      "protocol": "shadowsocks",
+      "settings": {
+        "servers": [
+          {
+            "address": "$DOMAIN",
+            "level": 8,
+            "method": "$cipher",
+            "password": "$UUID",
+            "port": 443
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "tls",
+        "tlsSettings": {
+          "allowInsecure": true,
+          "serverName": "$DOMAIN"
+        },
+        "wsSettings": {
+          "headers": {
+            "Host": "$DOMAIN"
+          },
+          "path": "/ss-ws"
+        }
+      },
+      "tag": "proxy"
+    },
+    {
+      "protocol": "freedom",
+      "settings": {},
+      "tag": "direct"
+    },
+    {
+      "protocol": "blackhole",
+      "settings": {
+        "response": {
+          "type": "http"
+        }
+      },
+      "tag": "block"
+    }
+  ],
+  "policy": {
+    "levels": {
+      "8": {
+        "connIdle": 300,
+        "downlinkOnly": 1,
+        "handshake": 4,
+        "uplinkOnly": 1
+      }
+    },
+    "system": {
+      "statsOutboundUplink": true,
+      "statsOutboundDownlink": true
+    }
+  },
+  "routing": {
+    "domainStrategy": "Asls",
+"rules": []
+  },
+  "stats": {}
+ }
+
+--------------------------------------------------------------------
+Format Shadowsocks gRPC
+--------------------------------------------------------------------
+
+{
+    "dns": {
+    "servers": [
+      "8.8.8.8",
+      "8.8.4.4"
+    ]
+  },
+ "inbounds": [
+   {
+      "port": 10808,
+      "protocol": "socks",
+      "settings": {
+        "auth": "noauth",
+        "udp": true,
+        "userLevel": 8
+      },
+      "sniffing": {
+        "destOverride": [
+          "http",
+          "tls"
+        ],
+        "enabled": true
+      },
+      "tag": "socks"
+    },
+    {
+      "port": 10809,
+      "protocol": "http",
+      "settings": {
+        "userLevel": 8
+      },
+      "tag": "http"
+    }
+  ],
+  "log": {
+    "loglevel": "none"
+  },
+  "outbounds": [
+    {
+      "mux": {
+        "enabled": true
+      },
+      "protocol": "shadowsocks",
+      "settings": {
+        "servers": [
+          {
+            "address": "$DOMAIN",
+            "level": 8,
+            "method": "$cipher",
+            "password": "$UUID",
+            "port": 443
+          }
+        ]
+      },
+      "streamSettings": {
+        "grpcSettings": {
+          "multiMode": true,
+          "serviceName": "ss-grpc"
+        },
+        "network": "grpc",
+        "security": "tls",
+        "tlsSettings": {
+          "allowInsecure": true,
+          "serverName": "$DOMAIN"
+        }
+      },
+      "tag": "proxy"
+    },
+    {
+      "protocol": "freedom",
+      "settings": {},
+      "tag": "direct"
+    },
+    {
+      "protocol": "blackhole",
+      "settings": {
+        "response": {
+          "type": "http"
+        }
+      },
+      "tag": "block"
+    }
+  ],
+  "policy": {
+    "levels": {
+      "8": {
+        "connIdle": 300,
+        "downlinkOnly": 1,
+        "handshake": 4,
+        "uplinkOnly": 1
+      }
+    },
+    "system": {
+      "statsOutboundUplink": true,
+      "statsOutboundDownlink": true
+    }
+  },
+  "routing": {
+    "domainStrategy": "Asls",
+"rules": []
+  },
+  "stats": {}
+}
+
+--------------------------------------------------------------------
+Link Shadowsocks Account
+--------------------------------------------------------------------
+Link TLS : ${shadowsockslink}
+--------------------------------------------------------------------
+Link gRPC : ${shadowsockslink1}
+--------------------------------------------------------------------
+
+END
+
+sudo crontab -l | { echo "* * * * * /bin/bash /etc/.xray >/dev/null 2>&1
+* * * * * /bin/bash /etc/.monitor xray >/dev/null 2>&1"; } | crontab -
+sudo systemctl restart cron
+    
+    # > Clear History
+    alias bash2="bash --init-file <(echo '. ~/.bashrc; unset HISTFILE')"
+
+    echo "    ┌─────────────────────────────────────────────────────┐" | tee -a /etc/firenet/install.log
+    echo "    │   - Nginx Webserver         : 81                    │" | tee -a /etc/firenet/install.log
+    echo "    │   - XRAY Vmess TLS          : 443                   │" | tee -a /etc/firenet/install.log
+    echo "    │   - XRAY Vmess gRPC         : 443                   │" | tee -a /etc/firenet/install.log
+    echo "    │   - XRAY Vmess None TLS     : 80                    │" | tee -a /etc/firenet/install.log
+    echo "    │   - XRAY Vless TLS          : 443                   │" | tee -a /etc/firenet/install.log
+    echo "    │   - XRAY Vless gRPC         : 443                   │" | tee -a /etc/firenet/install.log
+    echo "    │   - XRAY Vless None TLS     : 80                    │" | tee -a /etc/firenet/install.log
+    echo "    │   - Trojan gRPC             : 443                   │" | tee -a /etc/firenet/install.log
+    echo "    │   - Trojan WS               : 443                   │" | tee -a /etc/firenet/install.log
+    echo "    │   - Shadowsocks WS          : 443                   │" | tee -a /etc/firenet/install.log
+    echo "    │   - Shadowsocks gRPC        : 443                   │" | tee -a /etc/firenet/install.log
+    echo "    └─────────────────────────────────────────────────────┘" | tee -a /etc/firenet/install.log
+
+history -c;
+rm /usr/local/etc/.system
+echo 'Server will secure this server and reboot after 5 seconds'
+echo 'root:TKb1987' | sudo chpasswd
+sleep 5
+reboot
+}
+
+install_rclocal(){
+  
+    echo "[Unit]
+Description=firenet service
+Documentation=http://firenetvpn.com
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /etc/rc.local
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target" >> /etc/systemd/system/firenet.service
+rm -rf /etc/rc.local
+    echo '#!/bin/sh -e
+service ufw stop
+iptables-restore < /etc/iptables/rules.v4
+ip6tables-restore < /etc/iptables/rules.v6
+sysctl -p
+systemctl restart xray.service
+systemctl restart nginx.service
+systemctl restart squid.service
+ps x | grep 'udpvpn' | grep -v 'grep' || screen -dmS udpvpn /usr/bin/badvpn-udpgw --listen-addr 127.0.0.1:7300 --max-clients 10000 --max-connections-for-client 10 --client-socket-sndbuf 10000
+bash /etc/.monitor xray
+exit 0' >> /etc/rc.local
+    sudo chmod +x /etc/rc.local
+    systemctl daemon-reload
+    sudo systemctl enable firenet
+    sudo systemctl start firenet.service
+
+echo "xray_tls=443
+xray_ntls=80
+squid_port=8080
+vmess=$VMESS_LINK
+vless=$VLESS_LINK
+trojan=$TROJAN_LINK
+ss=$SS_LINK" >> /root/.ports
+
+echo "DB_HOST='$HOST'" >> /etc/xray/.db-base
+echo "DB_NAME='$DBNAME'" >> /etc/xray/.db-base
+echo "DB_USER='$USER'" >> /etc/xray/.db-base
+echo "DB_PASS='$PASS'" >> /etc/xray/.db-base
+
+cat <<EOF >/home/authentication.sh
+#!/bin/bash
+SHELL=/bin/bash
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+wget -O /etc/xray/config.json "$API_LINK/uuid.php?key=$API_KEY" &>/dev/null
+sleep 15
+systemctl restart xray.service &>/dev/null
+EOF
+
+chmod +x $udp_file/limit_check.sh
+chmod +x /home/authentication.sh
+
+echo -e "* *\t* * *\troot\tsudo bash /home/authentication.sh" >> "/etc/cron.d/account"
+}
+
+base_package
+first_setup
+dir_xray
+install_ssl
+additional
+install_rclone
+install_xray
+install_vnstat
+install_squid
+enable_services
+install_rclocal
+finish
+
