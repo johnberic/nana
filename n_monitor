@@ -1,0 +1,683 @@
+#!/bin/bash
+service=$1
+ip=$(curl -s https://api.ipify.org)
+os="$(fastfetch -s os)"; os="${os##*: }"
+distro="$(fastfetch -s os)"; distro="${os##*: }"
+cpu="$(fastfetch -s cpu)"; cpu="${cpu##*: }"
+memory="$(fastfetch -s memory)"; memory="${memory##*: }"
+disk="$(fastfetch -s disk)"; disk="${disk##*: }"; disk="${disk%-*}"
+uptime="$(fastfetch -s uptime)"; uptime="${uptime##*: }"
+bandwidth=$(vnstat --oneline | cut -d ";" -f 15)
+
+if [[ $service == "ssh" ]];
+then
+udphysteria=$(systemctl is-active hysteria-server.service)
+slowdns=$(systemctl is-active server-sldns.service)
+sshd=$(systemctl is-active sshd)
+dropbear=$(systemctl is-active dropbear)
+squid=$(systemctl is-active squid)
+ssl=$(systemctl is-active stunnel4)
+socket=$((echo >/dev/tcp/localhost/80) &>/dev/null && echo "active" || echo "inactive")
+total_sshd=$(netstat -natp | awk "/$ip:22/ && /ESTABLISHED/ && /sshd/" | wc -l)
+total_dropbear=$(netstat -natp | awk "/$ip:442/ && /ESTABLISHED/ && /dropbear/" | wc -l)
+total_socket=$(netstat -natp | awk "/$ip:80/ && /ESTABLISHED/ && /python/" | wc -l)
+total_sshssl=$(netstat -natp | awk "/$ip:443/ && /ESTABLISHED/ && /stunnel4/" | wc -l)
+totalssh=$((total_sshd + total_dropbear + total_socket + total_sshssl))
+total_hysteria=$(netstat -natp | awk "/$ip:53/ && /ESTABLISHED/ && /hysteria/" | wc -l)
+. /root/.ports
+. /root/.db-base
+
+# sanitize + SQL-escape a string for embedding into single-quoted SQL literals
+escape_for_sql() {
+  local s="$1"
+
+  # convert newlines/carriage returns to spaces
+  s="${s//$'\n'/ }"
+  s="${s//$'\r'/ }"
+
+  # remove other control characters (keep printable + space + tab)
+  s="$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037')"
+
+  # double-up single quotes for SQL (SQL standard escaping)
+  s="${s//\'/\'\'}"
+
+  printf '%s' "$s"
+}
+
+# Example: build an UPDATE using escaped values
+sql=$(cat <<SQL
+UPDATE server_list SET
+  cpu_model        = '$(escape_for_sql "$cpu")',
+  distro           = '$(escape_for_sql "$distro")',
+  memory           = '$(escape_for_sql "$memory")',
+  uptime           = '$(escape_for_sql "$uptime")',
+  disk             = '$(escape_for_sql "$disk")',
+  bandwidth        = '$(escape_for_sql "$bandwidth")',
+  os               = '$(escape_for_sql "$os")',
+  proto            = '$(escape_for_sql "$service")',
+  hysteria_status  = '$(escape_for_sql "$udphysteria")',
+  ssh_online       = '$(escape_for_sql "$totalssh")',
+  slowdns_status   = '$(escape_for_sql "$slowdns")',
+  ssh_status       = '$(escape_for_sql "$sshd")',
+  dropbear_status  = '$(escape_for_sql "$dropbear")',
+  udp_status       = '$(escape_for_sql "$udpovpn")',
+  ssl_status       = '$(escape_for_sql "$ssl")',
+  squid_status     = '$(escape_for_sql "$squid")',
+  socket_status    = '$(escape_for_sql "$socket")',
+  hysteria_port    = '$(escape_for_sql "$hysteria_port")',
+  slowdns_port     = '$(escape_for_sql "$slowdns_port")',
+  ssh_port         = '$(escape_for_sql "$ssh_port")',
+  dropbear_port    = '$(escape_for_sql "$dropbear_port")',
+  squid            = '$(escape_for_sql "$squid_port")',
+  socket           = '$(escape_for_sql "$socket_port")',
+  online           = '$(escape_for_sql "$totalovpn")',
+  hysteria_online  = '$(escape_for_sql "$total_hysteria")'
+WHERE server_ip = '$(escape_for_sql "$ip")'
+;
+SQL
+)
+
+mysql --ssl-verify-server-cert=OFF -u $DB_USER -p$DB_PASS -D $DB_NAME -h $DB_HOST --default-character-set=utf8mb4 -e "$sql"
+
+elif [[ $service == "slowdns" ]];
+then
+udphysteria=$(systemctl is-active hysteria-server.service)
+slowdns=$(systemctl is-active server-sldns.service)
+sshd=$(systemctl is-active sshd)
+dropbear=$(systemctl is-active dropbear)
+squid=$(systemctl is-active squid)
+ssl=$(systemctl is-active stunnel4)
+pubkey=$(cat /root/.dns/server.pub)
+socket=$((echo >/dev/tcp/localhost/80) &>/dev/null && echo "active" || echo "inactive")
+total_sshd=$(netstat -natp | awk "/$ip:22/ && /ESTABLISHED/ && /sshd/" | wc -l)
+total_dropbear=$(netstat -natp | awk "/$ip:442/ && /ESTABLISHED/ && /dropbear/" | wc -l)
+total_sshssl=$(netstat -natp | awk "/$ip:443/ && /ESTABLISHED/ && /stunnel4/" | wc -l)
+totalssh=$((total_sshd + total_dropbear + total_socket + total_sshssl))
+total_hysteria=$(netstat -natp | awk "/$ip:53/ && /ESTABLISHED/ && /hysteria/" | wc -l)
+. /root/.ports
+. /root/.db-base
+
+# sanitize + SQL-escape a string for embedding into single-quoted SQL literals
+escape_for_sql() {
+  local s="$1"
+
+  # convert newlines/carriage returns to spaces
+  s="${s//$'\n'/ }"
+  s="${s//$'\r'/ }"
+
+  # remove other control characters (keep printable + space + tab)
+  s="$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037')"
+
+  # double-up single quotes for SQL (SQL standard escaping)
+  s="${s//\'/\'\'}"
+
+  printf '%s' "$s"
+}
+
+# Example: build an UPDATE using escaped values
+sql=$(cat <<SQL
+UPDATE server_list SET
+  cpu_model        = '$(escape_for_sql "$cpu")',
+  distro           = '$(escape_for_sql "$distro")',
+  memory           = '$(escape_for_sql "$memory")',
+  uptime           = '$(escape_for_sql "$uptime")',
+  disk             = '$(escape_for_sql "$disk")',
+  bandwidth        = '$(escape_for_sql "$bandwidth")',
+  os               = '$(escape_for_sql "$os")',
+  proto            = '$(escape_for_sql "$service")',
+  hysteria_status  = '$(escape_for_sql "$udphysteria")',
+  ssh_online       = '$(escape_for_sql "$totalssh")',
+  slowdns_status   = '$(escape_for_sql "$slowdns")',
+  ssh_status       = '$(escape_for_sql "$sshd")',
+  pubkey           = '$(escape_for_sql "$pubkey")',
+  dropbear_status  = '$(escape_for_sql "$dropbear")',
+  udp_status       = '$(escape_for_sql "$udpovpn")',
+  ssl_status       = '$(escape_for_sql "$ssl")',
+  squid_status     = '$(escape_for_sql "$squid")',
+  socket_status    = '$(escape_for_sql "$socket")',
+  hysteria_port    = '$(escape_for_sql "$hysteria_port")',
+  slowdns_port     = '$(escape_for_sql "$slowdns_port")',
+  ssh_port         = '$(escape_for_sql "$ssh_port")',
+  dropbear_port    = '$(escape_for_sql "$dropbear_port")',
+  squid            = '$(escape_for_sql "$squid_port")',
+  online           = '$(escape_for_sql "$totalovpn")',
+  hysteria_online  = '$(escape_for_sql "$total_hysteria")'
+WHERE server_ip = '$(escape_for_sql "$ip")'
+;
+SQL
+)
+
+mysql --ssl-verify-server-cert=OFF -u $DB_USER -p$DB_PASS -D $DB_NAME -h $DB_HOST --default-character-set=utf8mb4 -e "$sql"
+
+
+elif [[ $service == "hysteria" ]];
+then
+udphysteria=$(systemctl is-active hysteria-server.service)
+squid=$(systemctl is-active squid)
+total_hysteria=$(netstat -natp | awk "/$ip:53/ && /ESTABLISHED/ && /hysteria/" | wc -l)
+. /root/.ports
+. /root/.db-base
+
+# sanitize + SQL-escape a string for embedding into single-quoted SQL literals
+escape_for_sql() {
+  local s="$1"
+
+  # convert newlines/carriage returns to spaces
+  s="${s//$'\n'/ }"
+  s="${s//$'\r'/ }"
+
+  # remove other control characters (keep printable + space + tab)
+  s="$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037')"
+
+  # double-up single quotes for SQL (SQL standard escaping)
+  s="${s//\'/\'\'}"
+
+  printf '%s' "$s"
+}
+
+# Example: build an UPDATE using escaped values
+sql=$(cat <<SQL
+UPDATE server_list SET
+  cpu_model        = '$(escape_for_sql "$cpu")',
+  distro           = '$(escape_for_sql "$distro")',
+  memory           = '$(escape_for_sql "$memory")',
+  uptime           = '$(escape_for_sql "$uptime")',
+  disk             = '$(escape_for_sql "$disk")',
+  bandwidth        = '$(escape_for_sql "$bandwidth")',
+  os               = '$(escape_for_sql "$os")',
+  proto            = '$(escape_for_sql "$service")',
+  hysteria_status  = '$(escape_for_sql "$udphysteria")',
+  squid_status     = '$(escape_for_sql "$squid")',
+  hysteria_port    = '$(escape_for_sql "$hysteria_port")',
+  squid            = '$(escape_for_sql "$squid_port")',
+  hysteria_online  = '$(escape_for_sql "$total_hysteria")'
+WHERE server_ip = '$(escape_for_sql "$ip")'
+;
+SQL
+)
+
+mysql --ssl-verify-server-cert=OFF -u $DB_USER -p$DB_PASS -D $DB_NAME -h $DB_HOST --default-character-set=utf8mb4 -e "$sql"
+
+
+elif [[ $service == "socksip" ]];
+then
+udpSERVER=$(systemctl is-active UDPserver)
+squid=$(systemctl is-active squid)
+
+. /root/.ports
+. /root/.db-base
+
+# sanitize + SQL-escape a string for embedding into single-quoted SQL literals
+escape_for_sql() {
+  local s="$1"
+
+  # convert newlines/carriage returns to spaces
+  s="${s//$'\n'/ }"
+  s="${s//$'\r'/ }"
+
+  # remove other control characters (keep printable + space + tab)
+  s="$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037')"
+
+  # double-up single quotes for SQL (SQL standard escaping)
+  s="${s//\'/\'\'}"
+
+  printf '%s' "$s"
+}
+
+# Example: build an UPDATE using escaped values
+sql=$(cat <<SQL
+UPDATE server_list SET
+  cpu_model        = '$(escape_for_sql "$cpu")',
+  distro           = '$(escape_for_sql "$distro")',
+  memory           = '$(escape_for_sql "$memory")',
+  uptime           = '$(escape_for_sql "$uptime")',
+  disk             = '$(escape_for_sql "$disk")',
+  bandwidth        = '$(escape_for_sql "$bandwidth")',
+  os               = '$(escape_for_sql "$os")',
+  proto            = '$(escape_for_sql "$service")',
+  socksip_status           = '$(escape_for_sql "$udpSERVER")',
+  socksip_port  = '$(escape_for_sql "$socksip_port")'
+WHERE server_ip = '$(escape_for_sql "$ip")'
+;
+SQL
+)
+
+mysql --ssl-verify-server-cert=OFF -u $DB_USER -p$DB_PASS -D $DB_NAME -h $DB_HOST --default-character-set=utf8mb4 -e "$sql"
+
+
+elif [[ $service == "openvpn" ]];
+then
+tcpovpn=$(systemctl is-active openvpn@server2.service)
+udpovpn=$(systemctl is-active openvpn@server.service)
+udphysteria=$(systemctl is-active hysteria-server.service)
+squid=$(systemctl is-active squid)
+ssl=$(systemctl is-active stunnel4)
+socket=$((echo >/dev/tcp/localhost/80) &>/dev/null && echo "active" || echo "inactive")
+tcpusers=$(sed -n -e '/^ROUTING_TABLE/p' /etc/openvpn/server/tcpclient.log | wc -l)
+udpusers=$(sed -n -e '/^ROUTING_TABLE/p' /etc/openvpn/server/udpclient.log | wc -l)
+totalovpn=$((tcpusers + udpusers))
+total_hysteria=$(netstat -natp | awk "/$ip:53/ && /ESTABLISHED/ && /hysteria/" | wc -l)
+. /root/.ports
+. /etc/openvpn/login/config.sh
+
+# sanitize + SQL-escape a string for embedding into single-quoted SQL literals
+escape_for_sql() {
+  local s="$1"
+
+  # convert newlines/carriage returns to spaces
+  s="${s//$'\n'/ }"
+  s="${s//$'\r'/ }"
+
+  # remove other control characters (keep printable + space + tab)
+  s="$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037')"
+
+  # double-up single quotes for SQL (SQL standard escaping)
+  s="${s//\'/\'\'}"
+
+  printf '%s' "$s"
+}
+
+# Example: build an UPDATE using escaped values
+sql=$(cat <<SQL
+UPDATE server_list SET
+  cpu_model        = '$(escape_for_sql "$cpu")',
+  distro           = '$(escape_for_sql "$distro")',
+  memory           = '$(escape_for_sql "$memory")',
+  uptime           = '$(escape_for_sql "$uptime")',
+  disk             = '$(escape_for_sql "$disk")',
+  bandwidth        = '$(escape_for_sql "$bandwidth")',
+  os               = '$(escape_for_sql "$os")',
+  proto            = '$(escape_for_sql "$service")',
+  tcpssl           = '$(escape_for_sql "$tcp_ssl_port")',
+  udpssl           = '$(escape_for_sql "$udp_ssl_port")',
+  tcp_status       = '$(escape_for_sql "$tcpovpn")',
+  hysteria_status  = '$(escape_for_sql "$udphysteria")',
+  xray_status      = '$(escape_for_sql "$xray")',
+  ssh_online       = '$(escape_for_sql "$totalssh")',
+  slowdns_status   = '$(escape_for_sql "$slowdns")',
+  ssh_status       = '$(escape_for_sql "$sshd")',
+  dropbear_status  = '$(escape_for_sql "$dropbear")',
+  udp_status       = '$(escape_for_sql "$udpovpn")',
+  ssl_status       = '$(escape_for_sql "$ssl")',
+  squid_status     = '$(escape_for_sql "$squid")',
+  socket_status    = '$(escape_for_sql "$socket")',
+  tcp              = '$(escape_for_sql "$tcp_port")',
+  udp              = '$(escape_for_sql "$udp_port")',
+  hysteria_port    = '$(escape_for_sql "$hysteria_port")',
+  squid            = '$(escape_for_sql "$squid_port")',
+  socket           = '$(escape_for_sql "$socket_port")',
+  online           = '$(escape_for_sql "$totalovpn")',
+  hysteria_online  = '$(escape_for_sql "$total_hysteria")'
+WHERE server_ip = '$(escape_for_sql "$ip")'
+;
+SQL
+)
+
+mysql --ssl-verify-server-cert=OFF --host="$HOST" --user="$USER" --password="$PASS" --default-character-set=utf8mb4 "$DB" -e "$sql"
+
+elif [[ $service == "aio" ]];
+then
+tcpovpn=$(systemctl is-active openvpn@server2.service)
+udpovpn=$(systemctl is-active openvpn@server.service)
+udphysteria=$(systemctl is-active hysteria-server.service)
+xray=$(systemctl is-active xray.service)
+slowdns=$(systemctl is-active server-sldns.service)
+sshd=$(systemctl is-active sshd)
+dropbear=$(systemctl is-active dropbear)
+squid=$(systemctl is-active squid)
+ssl=$(systemctl is-active stunnel4)
+socket=$((echo >/dev/tcp/localhost/80) &>/dev/null && echo "active" || echo "inactive")
+tcpusers=$(sed -n -e '/^ROUTING_TABLE/p' /etc/openvpn/server/tcpclient.log | wc -l)
+udpusers=$(sed -n -e '/^ROUTING_TABLE/p' /etc/openvpn/server/udpclient.log | wc -l)
+totalovpn=$((tcpusers + udpusers))
+total_sshd=$(netstat -natp | awk "/$ip:22/ && /ESTABLISHED/ && /sshd/" | wc -l)
+total_dropbear=$(netstat -natp | awk "/$ip:441/ && /ESTABLISHED/ && /dropbear/" | wc -l)
+total_socket1=$(netstat -natp | awk "/$ip:8000/ && /ESTABLISHED/ && /python/" | wc -l)
+total_socket2=$(netstat -natp | awk "/$ip:8001/ && /ESTABLISHED/ && /python/" | wc -l)
+total_socket3=$(netstat -natp | awk "/$ip:8002/ && /ESTABLISHED/ && /python/" | wc -l)
+total_sshssl=$(netstat -natp | awk "/$ip:445/ && /ESTABLISHED/ && /stunnel4/" | wc -l)
+totalssh=$((total_sshd + total_dropbear + total_socket1 + total_socket2 + total_socket3 + total_sshssl))
+total_hysteria=$(netstat -natp | awk "/$ip:53/ && /ESTABLISHED/ && /hysteria/" | wc -l)
+. /root/.ports
+. /etc/openvpn/login/config.sh
+
+# sanitize + SQL-escape a string for embedding into single-quoted SQL literals
+escape_for_sql() {
+  local s="$1"
+
+  # convert newlines/carriage returns to spaces
+  s="${s//$'\n'/ }"
+  s="${s//$'\r'/ }"
+
+  # remove other control characters (keep printable + space + tab)
+  s="$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037')"
+
+  # double-up single quotes for SQL (SQL standard escaping)
+  s="${s//\'/\'\'}"
+
+  printf '%s' "$s"
+}
+
+# Example: build an UPDATE using escaped values
+sql=$(cat <<SQL
+UPDATE server_list SET
+  cpu_model        = '$(escape_for_sql "$cpu")',
+  distro           = '$(escape_for_sql "$distro")',
+  memory           = '$(escape_for_sql "$memory")',
+  uptime           = '$(escape_for_sql "$uptime")',
+  disk             = '$(escape_for_sql "$disk")',
+  bandwidth        = '$(escape_for_sql "$bandwidth")',
+  os               = '$(escape_for_sql "$os")',
+  proto            = '$(escape_for_sql "$service")',
+  tcpssl           = '$(escape_for_sql "$tcp_ssl_port")',
+  udpssl           = '$(escape_for_sql "$udp_ssl_port")',
+  tcp_status       = '$(escape_for_sql "$tcpovpn")',
+  hysteria_status  = '$(escape_for_sql "$udphysteria")',
+  xray_status      = '$(escape_for_sql "$xray")',
+  ssh_online       = '$(escape_for_sql "$totalssh")',
+  slowdns_status   = '$(escape_for_sql "$slowdns")',
+  ssh_status       = '$(escape_for_sql "$sshd")',
+  dropbear_status  = '$(escape_for_sql "$dropbear")',
+  udp_status       = '$(escape_for_sql "$udpovpn")',
+  ssl_status       = '$(escape_for_sql "$ssl")',
+  squid_status     = '$(escape_for_sql "$squid")',
+  socket_status    = '$(escape_for_sql "$socket")',
+  tcp              = '$(escape_for_sql "$tcp_port")',
+  udp              = '$(escape_for_sql "$udp_port")',
+  hysteria_port    = '$(escape_for_sql "$hysteria_port")',
+  xray_port        = '$(escape_for_sql "$xray_port")',
+  slowdns_port     = '$(escape_for_sql "$slowdns_port")',
+  ssh_port         = '$(escape_for_sql "$ssh_port")',
+  dropbear_port    = '$(escape_for_sql "$dropbear_port")',
+  squid            = '$(escape_for_sql "$squid_port")',
+  socket           = '$(escape_for_sql "$socket_port")',
+  online           = '$(escape_for_sql "$totalovpn")',
+  hysteria_online  = '$(escape_for_sql "$total_hysteria")'
+WHERE server_ip = '$(escape_for_sql "$ip")'
+;
+SQL
+)
+
+mysql --ssl-verify-server-cert=OFF --host="$HOST" --user="$USER" --password="$PASS" --default-character-set=utf8mb4 "$DB" -e "$sql"
+
+elif [[ $service == "openconnect" ]];
+then
+ocserv=$(systemctl is-active ocserv)
+udphysteria=$(systemctl is-active hysteria-server.service)
+squid=$(systemctl is-active squid)
+ssl=$(systemctl is-active stunnel4)
+socket=$((echo >/dev/tcp/localhost/80) &>/dev/null && echo "active" || echo "inactive")
+#totalocserv=$(echo $(occtl -j -n  show users) | jq ". | length")
+totalocserv=$(netstat -natp | awk "/$ip:1194/ && /ESTABLISHED/ && /ocserv/" | wc -l)
+total_hysteria=$(netstat -natp | awk "/$ip:53/ && /ESTABLISHED/ && /hysteria/" | wc -l)
+. /root/.ports
+. /root/.db-base
+
+# sanitize + SQL-escape a string for embedding into single-quoted SQL literals
+escape_for_sql() {
+  local s="$1"
+
+  # convert newlines/carriage returns to spaces
+  s="${s//$'\n'/ }"
+  s="${s//$'\r'/ }"
+
+  # remove other control characters (keep printable + space + tab)
+  s="$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037')"
+
+  # double-up single quotes for SQL (SQL standard escaping)
+  s="${s//\'/\'\'}"
+
+  printf '%s' "$s"
+}
+
+# Example: build an UPDATE using escaped values
+sql=$(cat <<SQL
+UPDATE server_list SET
+  cpu_model        = '$(escape_for_sql "$cpu")',
+  distro           = '$(escape_for_sql "$distro")',
+  memory           = '$(escape_for_sql "$memory")',
+  uptime           = '$(escape_for_sql "$uptime")',
+  disk             = '$(escape_for_sql "$disk")',
+  bandwidth        = '$(escape_for_sql "$bandwidth")',
+  os               = '$(escape_for_sql "$os")',
+  proto            = '$(escape_for_sql "$service")',
+  tcpssl           = '$(escape_for_sql "$tcp_ssl_port")',
+  udpssl           = '$(escape_for_sql "$udp_ssl_port")',
+  tcp_status       = '$(escape_for_sql "$ocserv")',
+  udp_status       = '$(escape_for_sql "$ocserv")',
+  hysteria_status  = '$(escape_for_sql "$udphysteria")',
+  ssl_status       = '$(escape_for_sql "$ssl")',
+  squid_status     = '$(escape_for_sql "$squid")',
+  socket_status    = '$(escape_for_sql "$socket")',
+  tcp              = '$(escape_for_sql "$tcp_port")',
+  udp              = '$(escape_for_sql "$udp_port")',
+  hysteria_port    = '$(escape_for_sql "$hysteria_port")',
+  squid            = '$(escape_for_sql "$squid_port")',
+  socket           = '$(escape_for_sql "$socket_port")',
+  online           = '$(escape_for_sql "$totalocserv")',
+  hysteria_online  = '$(escape_for_sql "$total_hysteria")'
+WHERE server_ip = '$(escape_for_sql "$ip")'
+;
+SQL
+)
+
+mysql --ssl-verify-server-cert=OFF -u $DB_USER -p$DB_PASS -D $DB_NAME -h $DB_HOST --default-character-set=utf8mb4 -e "$sql"
+
+elif [[ $service == "xray" ]];
+then
+xray=$(systemctl is-active xray.service)
+nginx=$(systemctl is-active nginx)
+squid=$(systemctl is-active squid)
+
+. /root/.ports
+. /etc/xray/.db-base
+
+# sanitize + SQL-escape a string for embedding into single-quoted SQL literals
+escape_for_sql() {
+  local s="$1"
+
+  # convert newlines/carriage returns to spaces
+  s="${s//$'\n'/ }"
+  s="${s//$'\r'/ }"
+
+  # remove other control characters (keep printable + space + tab)
+  s="$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037')"
+
+  # double-up single quotes for SQL (SQL standard escaping)
+  s="${s//\'/\'\'}"
+
+  printf '%s' "$s"
+}
+
+# Example: build an UPDATE using escaped values
+sql=$(cat <<SQL
+UPDATE server_list SET
+  cpu_model        = '$(escape_for_sql "$cpu")',
+  distro           = '$(escape_for_sql "$distro")',
+  memory           = '$(escape_for_sql "$memory")',
+  uptime           = '$(escape_for_sql "$uptime")',
+  disk             = '$(escape_for_sql "$disk")',
+  bandwidth        = '$(escape_for_sql "$bandwidth")',
+  os               = '$(escape_for_sql "$os")',
+  proto            = '$(escape_for_sql "$service")',
+  xray_tls         = '$(escape_for_sql "$xray_tls")',
+  xray_ntls        = '$(escape_for_sql "$xray_ntls")',
+  xray_status      = '$(escape_for_sql "$xray")',
+  xray_vmess       = '$(escape_for_sql "$vmess")',
+  xray_vless       = '$(escape_for_sql "$vless")',
+  xray_trojan      = '$(escape_for_sql "$trojan")',
+  xray_ss          = '$(escape_for_sql "$ss")',
+  squid_status     = '$(escape_for_sql "$squid")',
+  squid            = '$(escape_for_sql "$squid_port")',
+  socket           = '$(escape_for_sql "$socket_port")'
+WHERE server_ip = '$(escape_for_sql "$ip")'
+;
+SQL
+)
+
+mysql --ssl-verify-server-cert=OFF -u $DB_USER -p$DB_PASS -D $DB_NAME -h $DB_HOST --default-character-set=utf8mb4 -e "$sql"
+
+elif [[ $service == "xray_vless" ]];
+then
+xray=$(systemctl is-active xray.service)
+nginx=$(systemctl is-active nginx)
+squid=$(systemctl is-active squid)
+
+. /root/.ports
+. /etc/xray/.db-base
+
+# sanitize + SQL-escape a string for embedding into single-quoted SQL literals
+escape_for_sql() {
+  local s="$1"
+
+  # convert newlines/carriage returns to spaces
+  s="${s//$'\n'/ }"
+  s="${s//$'\r'/ }"
+
+  # remove other control characters (keep printable + space + tab)
+  s="$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037')"
+
+  # double-up single quotes for SQL (SQL standard escaping)
+  s="${s//\'/\'\'}"
+
+  printf '%s' "$s"
+}
+
+# Example: build an UPDATE using escaped values
+sql=$(cat <<SQL
+UPDATE server_list SET
+  cpu_model        = '$(escape_for_sql "$cpu")',
+  distro           = '$(escape_for_sql "$distro")',
+  memory           = '$(escape_for_sql "$memory")',
+  uptime           = '$(escape_for_sql "$uptime")',
+  disk             = '$(escape_for_sql "$disk")',
+  bandwidth        = '$(escape_for_sql "$bandwidth")',
+  os               = '$(escape_for_sql "$os")',
+  proto            = '$(escape_for_sql "$service")',
+  xray_tls         = '$(escape_for_sql "$xray_tls")',
+  xray_ntls        = '$(escape_for_sql "$xray_ntls")',
+  xray_status      = '$(escape_for_sql "$xray")',
+  xray_vmess       = '$(escape_for_sql "$vmess")',
+  xray_vless       = '$(escape_for_sql "$vless")',
+  xray_trojan      = '$(escape_for_sql "$trojan")',
+  xray_ss          = '$(escape_for_sql "$ss")',
+  squid_status     = '$(escape_for_sql "$squid")',
+  squid            = '$(escape_for_sql "$squid_port")',
+  socket           = '$(escape_for_sql "$socket_port")'
+WHERE server_ip = '$(escape_for_sql "$ip")'
+;
+SQL
+)
+
+mysql --ssl-verify-server-cert=OFF -u $DB_USER -p$DB_PASS -D $DB_NAME -h $DB_HOST --default-character-set=utf8mb4 -e "$sql"
+
+elif [[ $service == "psiphon" ]];
+then
+psiphon=$(systemctl is-active psiphon.service)
+nginx=$(systemctl is-active nginx)
+squid=$(systemctl is-active squid)
+
+. /root/.ports
+. /opt/5G/.db-base
+
+# sanitize + SQL-escape a string for embedding into single-quoted SQL literals
+escape_for_sql() {
+  local s="$1"
+
+  # convert newlines/carriage returns to spaces
+  s="${s//$'\n'/ }"
+  s="${s//$'\r'/ }"
+
+  # remove other control characters (keep printable + space + tab)
+  s="$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037')"
+
+  # double-up single quotes for SQL (SQL standard escaping)
+  s="${s//\'/\'\'}"
+
+  printf '%s' "$s"
+}
+
+# Example: build an UPDATE using escaped values
+sql=$(cat <<SQL
+UPDATE server_list SET
+  cpu_model        = '$(escape_for_sql "$cpu")',
+  distro           = '$(escape_for_sql "$distro")',
+  memory           = '$(escape_for_sql "$memory")',
+  uptime           = '$(escape_for_sql "$uptime")',
+  disk             = '$(escape_for_sql "$disk")',
+  bandwidth        = '$(escape_for_sql "$bandwidth")',
+  os               = '$(escape_for_sql "$os")',
+  proto            = '$(escape_for_sql "$service")',
+  psiphon_status   = '$(escape_for_sql "$psiphon")',
+  squid_status     = '$(escape_for_sql "$squid")',
+  secret           = '$(escape_for_sql "$secret")'
+WHERE server_ip = '$(escape_for_sql "$ip")'
+;
+SQL
+)
+
+mysql --ssl-verify-server-cert=OFF -u $DB_USER -p$DB_PASS -D $DB_NAME -h $DB_HOST --default-character-set=utf8mb4 -e "$sql"
+
+
+elif [[ $service == "openconnect" ]];
+then
+ocserv=$(systemctl is-active ocserv)
+udphysteria=$(systemctl is-active hysteria-server.service)
+squid=$(systemctl is-active squid)
+ssl=$(systemctl is-active stunnel4)
+socket=$((echo >/dev/tcp/localhost/80) &>/dev/null && echo "active" || echo "inactive")
+totalocserv=$(echo $(occtl -j -n  show users) | jq ". | length")
+total_hysteria=$(netstat -natp | awk "/$ip:53/ && /ESTABLISHED/ && /hysteria/" | wc -l)
+. /root/.ports
+
+output=$(cat <<EOF
+{
+ "service": "openconnect protocol",
+ "ip": "$ip",
+ "users": "$totalocserv",
+ "bandwidth": "$bandwidth",
+ "os": "$os",
+ "distro": "$distro",
+ "cpu": "$cpu",
+ "memory": "$memory",
+ "disk": "$disk",
+ "uptime": "$uptime",
+ "udp_hysteria": "$hysteria_port - $udphysteria",
+ "tcp_port": "$tcp_port - $ocserv",
+ "socket_port": "$socket_port - $socket",
+ "squid_port": "$squid_port - $squid",
+ "tcp_ssl_port": "$tcp_ssl_port - $ssl",
+ "udp_ssl_port": "$udp_ssl_port - $ssl"
+}
+EOF
+)
+
+mysql -u $USER -p$PASS -D $DB -h $HOST -e "UPDATE server_list SET cpu_model='$cpu', distro='$distro', memory='$memory', uptime='$uptime', disk='$disk', bandwidth='$bandwidth', os='$os', proto='$service', tcpssl='$tcp_ssl_port', udpssl='$udp_ssl_port', tcp_status='$tcpovpn', hysteria_status='$udphysteria', udp_status='$udpovpn', ssl_status='$ssl', squid_status='$squid', socket_status='$socket', tcp='$tcp_port', udp='$udp_port', hysteria_port='$hysteria_port', squid='$squid_port', socket='$socket_port', online='$totalocserv', hysteria_online='$total_hysteria' WHERE server_ip='$ip' "
+
+
+elif [[ $service == "pptp" ]];
+then
+pptpd=$(systemctl is-active pptpd)
+
+output=$(cat <<EOF
+{
+ "service": "pptp protocol",
+ "ip": "$ip",
+ "bandwidth": "$bandwidth",
+ "pptpd": "$pptpd",
+ "os": "$os",
+ "distro": "$distro",
+ "cpu": "$cpu",
+ "memory": "$memory",
+ "disk": "$disk",
+ "uptime": "$uptime"
+}
+EOF
+)
+
+echo $output
+
+elif [[ $service == "reboot" ]];
+then
+sudo shutdown -r now
+fi
