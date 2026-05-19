@@ -2,32 +2,45 @@
 
 clear
 
-echo "======================================="
+echo "=========================================="
 echo "      HYSTERIA2 AUTO INSTALLER"
-echo "======================================="
+echo "=========================================="
 
+# ROOT CHECK
+if [[ $EUID -ne 0 ]]; then
+   echo "Run as root"
+   exit 1
+fi
+
+# INSTALL PACKAGES
 apt update -y
-apt install -y curl wget sudo ufw openssl qrencode
+apt install -y curl wget sudo openssl qrencode ufw
 
 # INSTALL HYSTERIA2
 bash <(curl -fsSL https://get.hy2.sh/)
 
 # SERVER INFO
 IP=$(curl -4 -s ip.sb)
+PORT=443
 PASS=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16)
 
+# CREATE FOLDER
 mkdir -p /etc/hysteria
 
-# SSL CERT
+# GENERATE SSL
 openssl req -x509 -nodes -newkey rsa:2048 \
 -keyout /etc/hysteria/server.key \
 -out /etc/hysteria/server.crt \
 -days 3650 \
 -subj "/CN=bing.com"
 
-# HYSTERIA2 CONFIG
+# FIX PERMISSION
+chmod 644 /etc/hysteria/server.key
+chmod 644 /etc/hysteria/server.crt
+
+# CREATE CONFIG
 cat > /etc/hysteria/config.yaml <<EOF
-listen: :443
+listen: :$PORT
 
 tls:
   cert: /etc/hysteria/server.crt
@@ -40,7 +53,7 @@ auth:
 masquerade:
   type: proxy
   proxy:
-    url: https://www.microsoft.com
+    url: https://bing.com
 
 ignoreClientBandwidth: true
 
@@ -53,13 +66,32 @@ quic:
 udpIdleTimeout: 60s
 EOF
 
+# DETECT HYSTERIA PATH
+HY2=$(which hysteria)
+
+# CREATE SYSTEMD SERVICE
+cat > /etc/systemd/system/hysteria-server.service <<EOF
+[Unit]
+Description=Hysteria2 Server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=$HY2 server -c /etc/hysteria/config.yaml
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 # FIREWALL
-ufw allow 443/tcp
-ufw allow 443/udp
+ufw allow $PORT/tcp
+ufw allow $PORT/udp
 ufw --force enable
 
-# BBR OPTIMIZATION
-cat >> /etc/sysctl.conf <<EOF
+# ENABLE BBR
+grep -q "tcp_congestion_control=bbr" /etc/sysctl.conf || cat >> /etc/sysctl.conf <<EOF
 
 net.core.default_qdisc=fq
 net.ipv4.tcp_congestion_control=bbr
@@ -69,7 +101,7 @@ EOF
 
 sysctl -p
 
-# RESTART SERVICE
+# START SERVICE
 systemctl daemon-reload
 systemctl enable hysteria-server
 systemctl restart hysteria-server
@@ -80,23 +112,36 @@ STATUS=$(systemctl is-active hysteria-server)
 
 clear
 
+echo "=========================================="
+echo "          HYSTERIA2 STATUS"
+echo "=========================================="
+echo ""
+
 if [ "$STATUS" = "active" ]; then
 
-echo "======================================="
-echo "       HYSTERIA2 INSTALLED"
-echo "======================================="
-echo ""
+URI="hysteria2://$PASS@$IP:$PORT?sni=bing.com&insecure=1#HY2"
+
 echo "STATUS : RUNNING"
-echo "SERVER : $IP"
-echo "PORT   : 443"
+echo "IP     : $IP"
+echo "PORT   : $PORT"
 echo "PASS   : $PASS"
 echo ""
 
-echo "============== CLIENT CONFIG =========="
+echo "============== URI ======================"
+echo ""
+echo "$URI"
+echo ""
+
+echo "============== QR ======================="
+echo ""
+qrencode -t ANSIUTF8 "$URI"
+echo ""
+
+echo "============== CONFIG ==================="
 echo ""
 
 cat <<EOL
-server: $IP:443
+server: $IP:$PORT
 
 auth: $PASS
 
@@ -112,36 +157,18 @@ socks5:
 
 http:
   listen: 127.0.0.1:8989
-
-fastOpen: true
-lazy: true
 EOL
 
 echo ""
-echo "============== URI ===================="
-echo ""
-
-URI="hysteria2://$PASS@$IP:443?sni=bing.com&insecure=1#HY2"
-
-echo "$URI"
-
-echo ""
-echo "============== QR ====================="
-echo ""
-
-qrencode -t ANSIUTF8 "$URI"
-
-echo ""
-echo "======================================="
-echo "SOCKS5 : 127.0.0.1:1080"
-echo "HTTP   : 127.0.0.1:8989"
-echo "======================================="
+echo "=========================================="
+echo " SOCKS5 : 127.0.0.1:1080"
+echo " HTTP   : 127.0.0.1:8989"
+echo "=========================================="
 
 else
 
-echo "======================================="
-echo " HYSTERIA2 FAILED TO START"
-echo "======================================="
+echo "FAILED TO START"
+echo ""
 
 journalctl -u hysteria-server -n 50 --no-pager
 
