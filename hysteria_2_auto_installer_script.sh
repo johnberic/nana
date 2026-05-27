@@ -21,7 +21,7 @@ bash <(curl -fsSL https://get.hy2.sh/)
 
 # SERVER INFO
 IP=$(curl -4 -s ip.sb)
-PORT=443
+PORT=5667
 PASS=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16)
 
 # CREATE FOLDER
