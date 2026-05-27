@@ -5,7 +5,6 @@ PASS='@JAN022011b';
 DBNAME='teamkidl_ea';
 PORT_TCP='1194';
 PORT_UDP='110';
-PORT_SSL='443';
 OBFS='boy';
 HYSTERIA_TYPE='default';
 PORT_VLESS='442';
