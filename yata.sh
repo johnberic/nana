@@ -600,7 +600,7 @@ output = /tmp/stunnel.log
 cert = /etc/stunnel/stunnel.pem
 
 [openvpn-tcp]
-connect = PORT_TCP  
+connect = PORT_TCP   
 accept = PORT_SSL 
 
 [openvpn-udp]
@@ -797,7 +797,6 @@ V2RAY VLESS TCP : $PORT_VLESS
 HYSTERIA 2 UDP  : $PORT_HYSTERIA2
 
 -----------------------
-
 For issues or suggestions please contact TKNETWORK SYSTEMS (ericlaylay01022987@gmail.com).
 
 " >> /root/.web/$secretkey.txt
@@ -808,101 +807,43 @@ For issues or suggestions please contact TKNETWORK SYSTEMS (ericlaylay01022987@g
 #sed -i "s|HOSTNAME_TK403|$DOMAIN|g" /root/.ports
 
 #install client-sldns.service
-cat > /etc/systemd/system/client-sldns.service << END
+cat > /etc/systemd/system/client-sldns.service <<EOF
 [Unit]
-Description=Client SlowDNS By HideSSH
-Documentation=https://hidessh.com
-After=network.target nss-lookup.target
+Description=SlowDNS Client Service
+After=network.target
 
 [Service]
 Type=simple
 User=root
-CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-NoNewPrivileges=true
-ExecStart=/etc/.dnsquest/dnstt-client -udp 1.1.1.1:53 --pubkey-file /root/.dns/server.pub $NS 127.0.0.1:2222
-Restart=on-failure
+WorkingDirectory=$DNSDIR
+ExecStart=$DNSDIR/dnstt-client -udp $dnsresolver -pubkey-file $DNSCONFIG/server.pub $NS 127.0.0.1:2222
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
-END
-
-#install server-sldns.service
-cat > /etc/systemd/system/server-sldns.service << END
-[Unit]
-Description=Server SlowDNS By HideSSH
-Documentation=https://hidessh.com
-After=network.target nss-lookup.target
-
-[Service]
-Type=simple
-User=root
-CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-NoNewPrivileges=true
-ExecStart=/etc/.dnsquest/dnstt-server -udp :5300 -privkey-file /root/.dns/server.key $NS 127.0.0.1:441
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-END
-}
-}
-
-#====================================================
-#	ADDED FUNCTION: V2Ray (VMess & VLESS)
-#====================================================
-install_v2ray() {
-echo "Installing V2Ray (VMess & VLESS)..."
-{
-    bash <(curl -L https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh)
-    
-    # Generate static UUIDs for security consistency
-    local vmess_uuid="d34d1b3d-1111-2222-3333-e45678912345"
-    local vless_uuid="ab1234cd-5555-6666-7777-f89012345678"
-
-    cat <<EOF > /usr/local/etc/v2ray/config.json
-{
-  "inbounds": [
-    {
-      "port": $PORT_VMESS,
-      "protocol": "vmess",
-      "settings": {
-        "clients": [{ "id": "$vmess_uuid", "alterId": 0 }]
-      },
-      "streamSettings": { "network": "tcp" }
-    },
-    {
-      "port": $PORT_VLESS,
-      "protocol": "vless",
-      "description": "VLESS TCP Mode",
-      "settings": {
-        "clients": [{ "id": "$vless_uuid" }],
-        "decryption": "none"
-      },
-      "streamSettings": { "network": "tcp" }
-    }
-  ],
-  "outbounds": [{ "protocol": "freedom", "settings": {} }]
-}
 EOF
-    systemctl enable v2ray
-    systemctl restart v2ray
-} &>/dev/null
+
+systemctl daemon-reload
+systemctl enable client-sldns.service
+systemctl start client-sldns.service
+}
 }
 
-#====================================================
-#	ADDED FUNCTION: Hysteria 2
-#====================================================
-install_hysteria2() {
-echo "Installing Hysteria 2..."
-{
-    bash <(curl -fsSL https://get.hy2.sh/)
-    
-    # Generate quick self-signed certs for Hy2 structure
-    mkdir -p /etc/hysteria
-    openssl req -x509 -nodes -newkey rsa:2048 -keyout /etc/hysteria/server.key -out /etc/hysteria/server.crt -days 3650 -subj "/CN=DefaultHy2"
+# ====================================================
+#	NEW FUNCTION: EXTRA PROTOCOLS IMPLEMENTATION
+# ====================================================
 
+install_hysteria2() {
+    echo "Installing Hysteria 2..."
+    {
+    # Download at install official binary
+    bash <(curl -fsSL https://get.hysteria.network/app/install/linux.sh)
+
+    # Gumawa ng self-signed certificate para sa TLS gamit ang iyong DOMAIN variable
+    mkdir -p /etc/hysteria
+    openssl req -x509 -nodes -newkey rsa:2048 -keyout /etc/hysteria/server.key -out /etc/hysteria/server.crt -days 3650 -subj "/CN=$DOMAIN"
+
+    # Configuration File (Port: 8555)
     cat <<EOF > /etc/hysteria/config.yaml
 listen: :$PORT_HYSTERIA2
 
@@ -912,17 +853,98 @@ tls:
 
 auth:
   type: password
-  password: "tknetwork_hy2_pass"
+  password: "$API_KEY"
 
+fastOpen: true
 masquerade:
   type: proxy
   proxy:
-    url: https://www.bing.com
+    url: http://127.0.0.1:8080
     rewriteHost: true
-
-fastOpen: true
 EOF
-    systemctl enable hysteria-server
-    systemctl restart hysteria-server
-} &>/dev/null
+
+    systemctl daemon-reload
+    systemctl enable hysteria-server.service
+    systemctl restart hysteria-server.service
+    } &>/dev/null
 }
+
+install_v2ray_xray() {
+    echo "Installing V2Ray (Xray Core) for VMess & VLESS..."
+    {
+    # Ligtas na i-install ang pinakabagong Xray core
+    bash <(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)
+
+    # Configuration File para sa VMess (8044) at VLESS (8045)
+    cat <<EOF > /usr/local/etc/xray/config.json
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "port": $PORT_VMESS,
+      "protocol": "vmess",
+      "settings": {
+        "clients": [
+          {
+            "id": "c831381d-6324-4d53-ad4f-8cda48b327c1",
+            "alterId": 0
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp"
+      }
+    },
+    {
+      "port": $PORT_VLESS,
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "e1a7381d-6324-4d53-ad4f-8cda48b327c2",
+            "level": 0
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "tcp"
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {}
+    }
+  ]
+}
+EOF
+
+    systemctl daemon-reload
+    systemctl enable xray
+    systemctl restart xray
+    } &>/dev/null
+}
+
+# ====================================================
+#	EXECUTION CONTROL
+# ====================================================
+server_ip=$(curl -s https://api.ipify.org)
+server_interface=$(ip route get 8.8.8.8 | awk -- '/dev/ {print $5}')
+
+install_require
+install_squid
+install_openvpn
+install_firewall_kvm
+install_stunnel
+install_sudo
+install_slowdns
+
+# Patakbuhin ang mga bagong dagdag na protocol
+install_hysteria2
+install_v2ray_xray
+
+echo "All services successfully deployed without conflicts."
