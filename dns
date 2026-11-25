@@ -1,42 +1,42 @@
 {
-        "version": "1.1.0",
-        "message": "Welcome to Tknetwork System - Default server configurations loaded successfully.",
-        "servers": [
-            {
-                "name": "Google DNS Server (8.8.8.8)",
-                "account": "",
-                "password": "",
-                "dnsServer": "8.8.8.8:53",
-                "tunnelDomain": "ns-848e02auto01.minitun26.xyz",
-                "publicKey": "",
-                "proxyPort": 7000,
-                "useSlipstream": true,
-                "congestionControl": "dcubic",
-                "keepAlive": 400
-            },
-            {
-                "name": "Cloudflare DNS Server (1.1.1.1)",
-                "account": "",
-                "password": "",
-                "dnsServer": "1.1.1.1:53",
-                "tunnelDomain": "ns-848e02auto01.minitun26.xyz",
-                "publicKey": "",
-                "proxyPort": 7000,
-                "useSlipstream": true,
-                "congestionControl": "dcubic",
-                "keepAlive": 400
-            },
-            {
-                "name": "DNSTT Free Preset 1",
-                "account": "",
-                "password": "",
-                "dnsServer": "9.9.9.9:53",
-                "tunnelDomain": "ns-848e02auto01.minitun26.xyz",
-                "publicKey": "",
-                "proxyPort": 7000,
-                "useSlipstream": true,
-                "congestionControl": "bbr",
-                "keepAlive": 400
-            }
-        ]
+  "version": "1.1.0",
+  "message": "Welcome to Tknetwork System - Default server configurations loaded successfully.",
+  "servers": [
+    {
+      "name": "Google DNS Server (8.8.8.8)",
+      "account": "",
+      "password": "",
+      "dnsServer": "8.8.8.8:53",
+      "tunnelDomain": "ns-848e02auto01.minitun26.xyz",
+      "publicKey": "",
+      "proxyPort": 7000,
+      "useSlipstream": true,
+      "congestionControl": "dcubic",
+      "keepAlive": 400
+    },
+    {
+      "name": "Cloudflare DNS Server (1.1.1.1)",
+      "account": "",
+      "password": "",
+      "dnsServer": "1.1.1.1:53",
+      "tunnelDomain": "ns-848e02auto01.minitun26.xyz",
+      "publicKey": "",
+      "proxyPort": 7000,
+      "useSlipstream": true,
+      "congestionControl": "dcubic",
+      "keepAlive": 400
+    },
+    {
+      "name": "DNSTT Free Preset 1",
+      "account": "",
+      "password": "",
+      "dnsServer": "9.9.9.9:53",
+      "tunnelDomain": "ns-848e02auto01.minitun26.xyz",
+      "publicKey": "",
+      "proxyPort": 7000,
+      "useSlipstream": true,
+      "congestionControl": "bbr",
+      "keepAlive": 400
     }
+  ]
+}
