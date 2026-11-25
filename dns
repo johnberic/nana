@@ -1,5 +1,5 @@
 {
-  "version": "1.3.0",
+  "version": "1.4.0",
   "message": "Welcome to Tknetwork System  loaded successfully.",
   "servers": [
     {
@@ -11,18 +11,20 @@
       "publicKey": "",
       "proxyPort": 7000,
       "useSlipstream": true,
+      "useGso": false,
       "congestionControl": "dcubic",
       "keepAlive": 400
     },
     {
-      "name": "Cloudflare DNS Server (1.1.1.1)",
+      "name": "Google DNS Server (GSO)",
       "account": "",
       "password": "",
-      "dnsServer": "1.1.1.1:53",
+      "dnsServer": "8.8.8.8:53",
       "tunnelDomain": "ns-848e02auto01.minitun26.xyz",
       "publicKey": "",
       "proxyPort": 7000,
       "useSlipstream": true,
+      "useGso": true,
       "congestionControl": "dcubic",
       "keepAlive": 400
     },
@@ -30,11 +32,12 @@
       "name": "DNSTT Free Preset 1",
       "account": "",
       "password": "",
-      "dnsServer": "9.9.9.9:53",
+      "dnsServer": "8.8.8.8:53",
       "tunnelDomain": "ns-848e02auto01.minitun26.xyz",
       "publicKey": "",
       "proxyPort": 7000,
       "useSlipstream": true,
+      "useGso": false,
       "congestionControl": "bbr",
       "keepAlive": 400
     }
