@@ -1,6 +1,6 @@
 {
-  "version": "1.1.0",
-  "message": "Welcome to Tknetwork System - Default server configurations loaded successfully.",
+  "version": "1.2.0",
+  "message": "Welcome to Tknetwork System  loaded successfully.",
   "servers": [
     {
       "name": "Google DNS Server (8.8.8.8)",
